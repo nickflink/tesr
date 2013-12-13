@@ -1,0 +1,11 @@
+# Ignore classfiles
+*.class
+# Ignore object files
+*.o
+# Ignore vim files
+*.swo
+*.swp
+# Ignore exhuberant-ctags files
+tags
+# Ignore bin dir
+bin/
