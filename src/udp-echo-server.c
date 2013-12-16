@@ -1,16 +1,15 @@
 // Source: http://www.mail-archive.com/libev@lists.schmorp.de/msg00987.html
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ev.h>
-
-#include <errno.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
+#include <errno.h>
+#include <ev.h>
+#include <libconfig.h>
 #include <resolv.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
-
 #include "uthash.h"
 
 //#define DEFAULT_PORT    3333
@@ -46,23 +45,30 @@ static void udp_cb(EV_P_ ev_io *w, int revents) {
 
     // add a null to terminate the input, as we're going to use it as a string
     buffer[bytes] = '\0';
-
-    printf("udp client said: %s from ip: %s:%d\n", buffer, ip, ntohs(addr.sin_port));
-
-    // Echo it back.
-    // WARNING: this is probably not the right way to do it with libev.
-    // Question: should we be setting a callback on sd becomming writable here instead?
-    struct rate_limit_struct *rl = NULL;
-    HASH_FIND_STR( rate_limit_map, ip, rl );
-    if(!rl) {
-        rl = malloc(sizeof(struct rate_limit_struct));
-        strncpy(rl->ip, ip, INET_ADDRSTRLEN);
-        rl->count = 1;
-        HASH_ADD_STR( rate_limit_map, ip, rl);
+    char *endptr = NULL;
+    int base = 10;
+    long long int echo = strtoll(buffer, &endptr, base);
+    if(buffer != NULL && buffer[0] != '\0' && endptr != NULL && endptr[0] == '\0') {
+        // Echo it back.
+        // WARNING: this is probably not the right way to do it with libev.
+        // Question: should we be setting a callback on sd becomming writable here instead?
+        struct rate_limit_struct *rl = NULL;
+        HASH_FIND_STR( rate_limit_map, ip, rl );
+        if(!rl) {
+            rl = malloc(sizeof(struct rate_limit_struct));
+            strncpy(rl->ip, ip, INET_ADDRSTRLEN);
+            rl->count = 1;
+            HASH_ADD_STR( rate_limit_map, ip, rl);
+        }
+        ++rl->count;
+        printf("[OK] udp client said: %s from ip: %s:%d\n", buffer, ip, ntohs(addr.sin_port));
+        sendto(sd, buffer, bytes, 0, (struct sockaddr*) &addr, sizeof(addr));
+    } else {
+        if(endptr == NULL) {
+            endptr = "NULL";
+        }
+        printf("[KO] stroll(%s, %s, %d) = %llu", buffer, endptr, base, echo);
     }
-    ++rl->count;
-
-    sendto(sd, buffer, bytes, 0, (struct sockaddr*) &addr, sizeof(addr));
 }
 
 static void idle_cb(struct ev_loop *loop, struct ev_idle *w, int revents) {
