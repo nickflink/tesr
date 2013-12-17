@@ -3,7 +3,9 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <ev.h>
+#include <getopt.h>
 #include <libconfig.h>
+#include <regex.h>
 #include <resolv.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,6 +17,7 @@
 //#define DEFAULT_PORT    3333
 #define DEFAULT_PORT    7
 #define BUF_SIZE        4096
+#define RATE_LIMIT      0
 
 // Lots of globals, what's the best way to get rid of these?
 int sd; // socket descriptor
@@ -26,11 +29,16 @@ char debugCount[BUF_SIZE];
 int count = 0;
 
 
+
+
+
+#if RATE_LIMIT
 struct rate_limit_struct {
     char ip[INET_ADDRSTRLEN]; /* we'll use this field as the key */
     int count;
     UT_hash_handle hh;        /* makes this structure hashable */
 };
+#endif //RATE_LIMIT
 
 struct rate_limit_struct *rate_limit_map = NULL;
 
@@ -52,6 +60,7 @@ static void udp_cb(EV_P_ ev_io *w, int revents) {
         // Echo it back.
         // WARNING: this is probably not the right way to do it with libev.
         // Question: should we be setting a callback on sd becomming writable here instead?
+#if RATE_LIMIT
         struct rate_limit_struct *rl = NULL;
         HASH_FIND_STR( rate_limit_map, ip, rl );
         if(!rl) {
@@ -61,6 +70,7 @@ static void udp_cb(EV_P_ ev_io *w, int revents) {
             HASH_ADD_STR( rate_limit_map, ip, rl);
         }
         ++rl->count;
+#endif //RATE_LIMIT
         printf("[OK] udp client said: %s from ip: %s:%d\n", buffer, ip, ntohs(addr.sin_port));
         sendto(sd, buffer, bytes, 0, (struct sockaddr*) &addr, sizeof(addr));
     } else {
@@ -71,6 +81,7 @@ static void udp_cb(EV_P_ ev_io *w, int revents) {
     }
 }
 
+#if RATE_LIMIT
 static void idle_cb(struct ev_loop *loop, struct ev_idle *w, int revents) {
     /* iterate over hash elements  */
     if(rate_limit_map) {
@@ -83,30 +94,156 @@ static void idle_cb(struct ev_loop *loop, struct ev_idle *w, int revents) {
       printf(".");
     }
 }
+#endif //RATE_LIMIT
 
-int main(void) {
+int main(int argc, char **argv) {
+    //char *host_ip = "127.0.0.1";
+    //char *netmask = "127.0.0.0";
+    //struct in_addr host, mask, broadcast;
+    //char broadcast_address[INET_ADDRSTRLEN];
+    //if (inet_pton(AF_INET, host_ip, &host) == 1 &&
+    //    inet_pton(AF_INET, ne5tmask, &mask) == 1)
+    //    broadcast.s_addr = host.s_addr | ~mask.s_addr;
+    //else {
+    //    fprintf(stderr, "Failed converting strings to numbers\n");
+    //    return 1;
+    //}
+    //if (inet_ntop(AF_INET, &broadcast, broadcast_address, INET_ADDRSTRLEN) != NULL)
+    //    printf("Broadcast address of %s with netmask %s is %s\n",
+    //        host_ip, netmask, broadcast_address);
+    //else {
+    //    fprintf(stderr, "Failed converting number to string\n");
+    //    return 1;
+    //}
+    //return 0;
+
+    //
+    // REGEX
+    //
+    char *host_ip = "127.0.0.1";
+    char *netmask = "127.0.0.*";
+    regex_t regex;
+    int reti;
+    char msgbuf[100];
+    // Cle regular expression
+    reti = regcomp(&regex, netmask, 0);
+    if( reti ) {
+        fprintf(stderr, "Could not compile regex\n"); exit(1);
+    }
+    // Ete regular expression
+    reti = regexec(&regex, host_ip, 0, NULL, 0);
+    if( !reti ) {
+        puts("REGEX Match");
+    } else if( reti == REG_NOMATCH ) {
+        puts("REGEX No match");
+    } else {
+        regerror(reti, &regex, msgbuf, sizeof(msgbuf));
+        fprintf(stderr, "REGEX match failed: %s\n", msgbuf);
+        exit(1);
+    }
+    // Free compiled regular expression if you want to use the regex_t again
+    regfree(&regex);
+
+    //
+    // DEFAULTS
+    //
+    int configPort = 0;
+    int cmdlinePort = 0;
     int port = DEFAULT_PORT;
-    puts("udp_echo server started...");
-
-    // Setup a udp listening socket.
+    //
+    // OptArg
+    //
+    int c;
+    while (1) {
+        int option_index = 0;
+        static struct option long_options[] = {
+            {"port",    required_argument, 0, 'p'},
+            {0,         0,                 0,  0 }
+        };
+        c = getopt_long(argc, argv, "p:", long_options, &option_index);
+        if (c == -1)
+            break;
+        switch (c) {
+        case 'p':
+            cmdlinePort = atoi(optarg);
+            if(cmdlinePort == 0) {
+                printf("non-numeric port '%s'", optarg);
+            } else {
+                printf("command line port =%d\n", cmdlinePort);
+                port = cmdlinePort;
+            }
+            break;
+        case '?':
+            break;
+        default:
+            printf("?? getopt returned character code 0%o ??\n", c);
+        }
+    }
+   if (optind < argc) {
+        printf("non-option ARGV-elements: ");
+        while (optind < argc)
+            printf("%s ", argv[optind++]);
+        printf("\n");
+    }
+    //
+    // Config
+    //
+    config_t cfg;
+    char *local_config_file_name = "udp_net_check.conf";
+    char *system_config_file_name = "/etc/udp_net_check.conf";
+    /*Initialization */
+    config_init(&cfg);
+    int config_loaded = 0;
+    /* Read the file. If there is an error, report it and exit. */
+    if(!config_loaded) {
+        config_loaded = config_read_file(&cfg, local_config_file_name);
+        if(config_loaded) printf("using config ./%s\n", local_config_file_name);
+    }
+    if(!config_loaded) {
+        config_loaded = config_read_file(&cfg, system_config_file_name);
+        if(config_loaded) printf("using config %s\n", system_config_file_name);
+    }
+    if(!config_loaded) {
+        printf("\n%s:%d - %s", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
+        config_destroy(&cfg);
+        return -1;
+    }
+    /* Get the configuration file name. */
+    if(cmdlinePort == 0) {
+        if(config_lookup_int(&cfg, "listen_port", &configPort)) {
+            printf("\nlisten_port: %d\n", configPort);
+        } else {
+            printf("\nNo 'listen_port' setting in configuration file.");
+        }
+    }
+    //
+    // Config
+    //
+    printf("udp-echo-server ver started listening on port %d...\n", port);
+    //
+    // Socket setup
+    //
     sd = socket(PF_INET, SOCK_DGRAM, 0);
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = INADDR_ANY;
-    if (bind(sd, (struct sockaddr*) &addr, sizeof(addr)) != 0)
+    if (bind(sd, (struct sockaddr*) &addr, sizeof(addr)) != 0) {
         perror("bind");
-
-    // Do the libev stuff.
+    }
+    //
+    // Event Loop and Socket setup
+    //
     struct ev_loop *loop = ev_default_loop(0);
     ev_io udp_watcher;
-    ev_idle idle_watcher;
     ev_io_init(&udp_watcher, udp_cb, sd, EV_READ);
     ev_io_start(loop, &udp_watcher);
+#if RATE_LIMIT
+    ev_idle idle_watcher;
     ev_idle_init(&idle_watcher, idle_cb);
     ev_idle_start(loop, &idle_watcher);
+#endif //RATE_LIMIT
     ev_loop(loop, 0);
-
     // This point is never reached.
     close(sd);
     return EXIT_SUCCESS;
