@@ -13,9 +13,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "uthash.h"
+#include "ues-config.h"
 
 //#define DEFAULT_PORT    3333
-#define DEFAULT_PORT    7
+//#define DEFAULT_PORT    7
 #define BUF_SIZE        4096
 #define RATE_LIMIT      0
 
@@ -144,89 +145,18 @@ int main(int argc, char **argv) {
     // Free compiled regular expression if you want to use the regex_t again
     regfree(&regex);
 
-    //
-    // DEFAULTS
-    //
-    int configPort = 0;
-    int cmdlinePort = 0;
-    int port = DEFAULT_PORT;
-    //
-    // OptArg
-    //
-    int c;
-    while (1) {
-        int option_index = 0;
-        static struct option long_options[] = {
-            {"port",    required_argument, 0, 'p'},
-            {0,         0,                 0,  0 }
-        };
-        c = getopt_long(argc, argv, "p:", long_options, &option_index);
-        if (c == -1)
-            break;
-        switch (c) {
-        case 'p':
-            cmdlinePort = atoi(optarg);
-            if(cmdlinePort == 0) {
-                printf("non-numeric port '%s'", optarg);
-            } else {
-                printf("command line port =%d\n", cmdlinePort);
-                port = cmdlinePort;
-            }
-            break;
-        case '?':
-            break;
-        default:
-            printf("?? getopt returned character code 0%o ??\n", c);
-        }
-    }
-   if (optind < argc) {
-        printf("non-option ARGV-elements: ");
-        while (optind < argc)
-            printf("%s ", argv[optind++]);
-        printf("\n");
-    }
-    //
-    // Config
-    //
-    config_t cfg;
-    char *local_config_file_name = "udp_net_check.conf";
-    char *system_config_file_name = "/etc/udp_net_check.conf";
-    /*Initialization */
-    config_init(&cfg);
-    int config_loaded = 0;
-    /* Read the file. If there is an error, report it and exit. */
-    if(!config_loaded) {
-        config_loaded = config_read_file(&cfg, local_config_file_name);
-        if(config_loaded) printf("using config ./%s\n", local_config_file_name);
-    }
-    if(!config_loaded) {
-        config_loaded = config_read_file(&cfg, system_config_file_name);
-        if(config_loaded) printf("using config %s\n", system_config_file_name);
-    }
-    if(!config_loaded) {
-        printf("\n%s:%d - %s", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
-        config_destroy(&cfg);
-        return -1;
-    }
-    /* Get the configuration file name. */
-    if(cmdlinePort == 0) {
-        if(config_lookup_int(&cfg, "listen_port", &configPort)) {
-            printf("\nlisten_port: %d\n", configPort);
-        } else {
-            printf("\nNo 'listen_port' setting in configuration file.");
-        }
-    }
-    //
-    // Config
-    //
-    printf("udp-echo-server ver started listening on port %d...\n", port);
+    ues_config_t ues_config;
+    init_config(&ues_config, argc, argv);
+    log_config(&ues_config);
+
+    printf("udp-echo-server ver started listening on port %d...\n", ues_config.port);
     //
     // Socket setup
     //
     sd = socket(PF_INET, SOCK_DGRAM, 0);
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    addr.sin_port = htons(ues_config.port);
     addr.sin_addr.s_addr = INADDR_ANY;
     if (bind(sd, (struct sockaddr*) &addr, sizeof(addr)) != 0) {
         perror("bind");
