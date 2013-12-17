@@ -12,21 +12,23 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "uthash.h"
-#include "ues-config.h"
+#include <uthash.h>
+#include <utlist.h>
+#include <ues-config.h>
 
 //#define DEFAULT_PORT    3333
 //#define DEFAULT_PORT    7
 #define BUF_SIZE        4096
 #define RATE_LIMIT      0
 
+ues_config_t ues_config;
 // Lots of globals, what's the best way to get rid of these?
 int sd; // socket descriptor
 struct sockaddr_in addr;
 int addr_len = sizeof(addr);
 char ip[INET_ADDRSTRLEN];
 char buffer[BUF_SIZE];
-char debugCount[BUF_SIZE];
+//char debugCount[BUF_SIZE];
 int count = 0;
 
 
@@ -46,10 +48,43 @@ struct rate_limit_struct *rate_limit_map = NULL;
 // This callback is called when data is readable on the UDP socket.
 static void udp_cb(EV_P_ ev_io *w, int revents) {
     //puts("udp socket has become readable for the %d time(s)", ++count);
-    snprintf(debugCount, BUF_SIZE, "udp socket has become readable for the %d time(s)", ++count);
-    puts(debugCount);
+    //snprintf(debugCount, BUF_SIZE, "udp socket has become readable for the %d time(s)", ++count);
+    //puts(debugCount);
     socklen_t bytes = recvfrom(sd, buffer, sizeof(buffer) - 1, 0, (struct sockaddr*) &addr, (socklen_t *) &addr_len);
     inet_ntop(addr.sin_family, &addr.sin_addr, ip, INET_ADDRSTRLEN);
+    //
+    //FILTER CHECK
+    //
+    int passed_filter = 1;
+    ues_filter_t *element;
+    LL_FOREACH(ues_config.filters, element) {
+        if(element) {
+            printf("filter element %s\n", element->filter);
+            regex_t regex;
+            int reti;
+            // Cle regular expression
+            reti = regcomp(&regex, element->filter, 0);
+            if( reti ) {
+                fprintf(stderr, "Could not compile regex\n"); exit(1);
+            }
+            // Ete regular expression
+            reti = regexec(&regex, ip, 0, NULL, 0);
+            if( !reti ) {
+                puts("[KO] Filtered Out!");
+                passed_filter = 0;
+                break;
+            } else if( reti == REG_NOMATCH ) {
+                puts("[OK] Passed Filter");
+            } else {
+                char msgbuf[100];
+                regerror(reti, &regex, msgbuf, sizeof(msgbuf));
+                fprintf(stderr, "REGEX match failed: %s\n", msgbuf);
+                //exit(1);
+            }
+            // Free compiled regular expression if you want to use the regex_t again
+            regfree(&regex);
+        }
+    }
     //inet_pton(AF_INET, ip)
 
     // add a null to terminate the input, as we're going to use it as a string
@@ -57,7 +92,7 @@ static void udp_cb(EV_P_ ev_io *w, int revents) {
     char *endptr = NULL;
     int base = 10;
     long long int echo = strtoll(buffer, &endptr, base);
-    if(buffer != NULL && buffer[0] != '\0' && endptr != NULL && endptr[0] == '\0') {
+    if(passed_filter && buffer != NULL && buffer[0] != '\0' && endptr != NULL && endptr[0] == '\0') {
         // Echo it back.
         // WARNING: this is probably not the right way to do it with libev.
         // Question: should we be setting a callback on sd becomming writable here instead?
@@ -83,7 +118,7 @@ static void udp_cb(EV_P_ ev_io *w, int revents) {
 }
 
 #if RATE_LIMIT
-static void idle_cb(struct ev_loop *loop, struct ev_idle *w, int revents) {
+static void periodic_cb(struct ev_loop *loop, struct ev_periodic *w, int revents) {
     /* iterate over hash elements  */
     if(rate_limit_map) {
       struct rate_limit_struct *rl = NULL, *tmp = NULL;
@@ -125,7 +160,6 @@ int main(int argc, char **argv) {
     char *netmask = "127.0.0.*";
     regex_t regex;
     int reti;
-    char msgbuf[100];
     // Cle regular expression
     reti = regcomp(&regex, netmask, 0);
     if( reti ) {
@@ -138,6 +172,7 @@ int main(int argc, char **argv) {
     } else if( reti == REG_NOMATCH ) {
         puts("REGEX No match");
     } else {
+        char msgbuf[100];
         regerror(reti, &regex, msgbuf, sizeof(msgbuf));
         fprintf(stderr, "REGEX match failed: %s\n", msgbuf);
         exit(1);
@@ -145,7 +180,6 @@ int main(int argc, char **argv) {
     // Free compiled regular expression if you want to use the regex_t again
     regfree(&regex);
 
-    ues_config_t ues_config;
     init_config(&ues_config, argc, argv);
     log_config(&ues_config);
 
@@ -169,9 +203,10 @@ int main(int argc, char **argv) {
     ev_io_init(&udp_watcher, udp_cb, sd, EV_READ);
     ev_io_start(loop, &udp_watcher);
 #if RATE_LIMIT
-    ev_idle idle_watcher;
-    ev_idle_init(&idle_watcher, idle_cb);
-    ev_idle_start(loop, &idle_watcher);
+    ev_periodic periodic_watcher;
+    ev_periodic_init(&periodic_watcher, periodic_cb, 0., 0.01, 0);
+    //Rate Limit over 10 minutes
+    ev_periodic_start(loop, &periodic_watcher);
 #endif //RATE_LIMIT
     ev_loop(loop, 0);
     // This point is never reached.

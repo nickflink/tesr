@@ -1,4 +1,4 @@
-CC_OPTS = -Wall -Werror -lev -lconfig -ggdb3 -I./include
+CC_OPTS = -Wall -Werror -lev -lconfig -I./include
 CC_FLAGS = -Wall -Werror
 CC_LIBS = -lev -lconfig
 CC_INC = -I./include
@@ -16,7 +16,7 @@ clean:
 
 
 
-bin/udp-echo-server:  src/udp-echo-server.c src/ues-config.c
+bin/udp-echo-server: src/ues-config.c src/udp-echo-server.c
 	$(CC) $(CC_OPTS) -o $@ $?
 
 bin/teesr: src/teesr.c
