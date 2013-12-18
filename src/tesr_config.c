@@ -1,6 +1,6 @@
 // Source: http://www.mail-archive.com/libev@lists.schmorp.de/msg00987.html
 
-#include <ues-config.h>
+#include <tesr_config.h>
 #include <getopt.h>
 #include <libconfig.h>
 #include <stdlib.h>
@@ -8,16 +8,16 @@
 #include <utlist.h>
 
 
-void log_config(ues_config_t *ues_config) {
-    printf("ues_config->port=%d\n", ues_config->port);
+void log_config(tesr_config_t *tesr_config) {
+    printf("tesr_config->port=%d\n", tesr_config->port);
 }
 
-void init_config(ues_config_t *ues_config, int argc, char **argv) {
+void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
     //
     // DEFAULTS
     //
-    ues_config->port = DEFAULT_PORT;
-    ues_config->filters = NULL;
+    tesr_config->port = DEFAULT_PORT;
+    tesr_config->filters = NULL;
     int configPort = 0;
     int cmdlinePort = 0;
     //
@@ -45,7 +45,7 @@ void init_config(ues_config_t *ues_config, int argc, char **argv) {
     /* Get the configuration file name. */
     if(config_lookup_int(&cfg, "listen_port", &configPort)) {
         printf("\nlisten_port: %d\n", configPort);
-        ues_config->port = configPort;
+        tesr_config->port = configPort;
     } else {
         printf("\nNo 'listen_port' setting in configuration file.");
     }
@@ -58,9 +58,9 @@ void init_config(ues_config_t *ues_config, int argc, char **argv) {
             printf("we have a filter\n");
             const char *sz_filter = config_setting_get_string(filter);
             if(sz_filter) {
-                ues_filter_t *element = (ues_filter_t *)malloc(sizeof(ues_filter_t));
+                tesr_filter_t *element = (tesr_filter_t *)malloc(sizeof(tesr_filter_t));
                 strncpy(element->filter, sz_filter, INET_ADDRSTRLEN);
-                LL_PREPEND(ues_config->filters, element);
+                LL_PREPEND(tesr_config->filters, element);
                 printf("filter=%s\n", sz_filter);
             }
             filter = config_setting_get_elem(filters, filterIdx++);
@@ -86,7 +86,7 @@ void init_config(ues_config_t *ues_config, int argc, char **argv) {
                 printf("non-numeric port '%s'", optarg);
             } else {
                 printf("command line port =%d\n", cmdlinePort);
-                ues_config->port = cmdlinePort;
+                tesr_config->port = cmdlinePort;
             }
             break;
         case '?':

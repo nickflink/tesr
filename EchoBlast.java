@@ -5,6 +5,7 @@ import java.util.*;
 public class EchoBlast {
     private static final int PORT_NUM = 1989;
     private static final int NUM_PACKETS = 500;
+    private static final int SOCKET_TIMEOUT = 500;
     class Producer extends Thread {
         private static final String INET_ADDR = "127.0.0.1";
         private DatagramSocket dsock;
@@ -21,7 +22,7 @@ public class EchoBlast {
                     Date sendTime = new Date( ); // note the time of sending the message
                     //ok
                     String sentTimeMsg = ""+sendTime.getTime();//"This is client calling";
-                    sentTimeMsg = ""+i;//"This is just the count";
+                    //sentTimeMsg = ""+i;//"This is just the count";
                     //sentTimeMsg = "a"+sendTime.getTime();//"This is client calling";
                     //sentTimeMsg = sendTime.getTime()+"b";//"This is client calling";
                     byte arr[] = sentTimeMsg.getBytes( );
@@ -92,7 +93,7 @@ public class EchoBlast {
     private void run() {
         try {
             DatagramSocket dsock = new DatagramSocket( );
-            dsock.setSoTimeout(500);
+            dsock.setSoTimeout(SOCKET_TIMEOUT);
             Consumer consumer = new Consumer(dsock);
             Producer producer = new Producer(dsock);
             consumer.start();
