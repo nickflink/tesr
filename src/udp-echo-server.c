@@ -46,7 +46,7 @@ struct rate_limit_struct {
 struct rate_limit_struct *rate_limit_map = NULL;
 
 // This callback is called when data is readable on the UDP socket.
-static void udp_cb(EV_P_ ev_io *w, int revents) {
+static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     //puts("udp socket has become readable for the %d time(s)", ++count);
     //snprintf(debugCount, BUF_SIZE, "udp socket has become readable for the %d time(s)", ++count);
     //puts(debugCount);
@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
     //
     struct ev_loop *loop = ev_default_loop(0);
     ev_io udp_watcher;
-    ev_io_init(&udp_watcher, udp_cb, sd, EV_READ);
+    ev_io_init(&udp_watcher, udp_read_cb, sd, EV_READ);
     ev_io_start(loop, &udp_watcher);
 #if RATE_LIMIT
     ev_periodic periodic_watcher;

@@ -3,6 +3,8 @@ import java.util.*;
 
 
 public class EchoBlast {
+    private static final int PORT_NUM = 1989;
+    private static final int NUM_PACKETS = 500;
     class Producer extends Thread {
         private static final String INET_ADDR = "127.0.0.1";
         private DatagramSocket dsock;
@@ -15,14 +17,15 @@ public class EchoBlast {
                 InetAddress add = InetAddress.getByName(INET_ADDR);
                 //DatagramSocket dsock = new DatagramSocket( );
                 //while(true) {
-                for(int i = 0; i < 1000; i++) {
+                for(int i = 0; i < NUM_PACKETS; i++) {
                     Date sendTime = new Date( ); // note the time of sending the message
                     //ok
                     String sentTimeMsg = ""+sendTime.getTime();//"This is client calling";
+                    sentTimeMsg = ""+i;//"This is just the count";
                     //sentTimeMsg = "a"+sendTime.getTime();//"This is client calling";
                     //sentTimeMsg = sendTime.getTime()+"b";//"This is client calling";
                     byte arr[] = sentTimeMsg.getBytes( );
-                    DatagramPacket dpack = new DatagramPacket(arr, arr.length, add, 7);
+                    DatagramPacket dpack = new DatagramPacket(arr, arr.length, add, PORT_NUM);
                     dsock.send(dpack);// send the packet
                     //dsock.close();
                 }
