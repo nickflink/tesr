@@ -1,9 +1,17 @@
-CC_OPTS = -Wall -Werror -lev -lconfig -I./include
+BIN_DIR = ./bin
+INC_DIR = ./include
+SRC_DIR = ./src
+OBJ_DIR = ./obj
 CC_FLAGS = -Wall -Werror
 CC_LIBS = -lev -lconfig
-CC_INC = -I./include
+CC_INC = -I$(INC_DIR)
 JC = javac
-JC_OPTS = 
+
+OBJS = $(OBJ_DIR)/tesr.o \
+       $(OBJ_DIR)/tesr_config.o \
+       $(OBJ_DIR)/tesr_common.o \
+       $(OBJ_DIR)/tesr_worker.o \
+
 
 .SUFFIXES: .java .class
 
@@ -12,16 +20,13 @@ CLASSES = EchoBlast.java
 all: bin/udp-echo-server bin/tesr $(CLASSES:.java=.class)
 
 clean:
-	$(RM) *.o bin/* *.class
+	$(RM) $(OBJ_DIR)/* $(BIN_DIR)/* *.class
 
-bin/udp-echo-server: src/ues-config.c src/udp-echo-server.c
-	$(CC) $(CC_OPTS) -o $@ $?
+$(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
+	$(CC) -c -o $@ $< $(CC_FLAGS) $(CC_INC)
 
-bin/tesr: src/tesr_common.c src/tesr_config.c src/tesr.c
-	$(CC) $(CC_OPTS) -o $@ $?
-
-bin/unix-echo-server: src/unix-echo-server.c
-	$(CC) $(CC_OPTS) -o $@ $<
+$(BIN_DIR)/tesr : $(OBJS)
+	$(CC) -o $@ $^ $(CC_FLAGS) $(CC_LIBS) $(CC_INC)
 
 .java.class:
 	$(JC) $(JC_OPTS) $*.java
