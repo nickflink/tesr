@@ -4,6 +4,7 @@
 #include <ev.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <tesr_common.h>
 #include <unistd.h> // for usleep
 #include <utlist.h>
@@ -45,9 +46,18 @@ void* worker_thread_start(void* args) {
 }
 
 //called on the main thread
-void init_worker(worker_thread_t *worker_thread, int port, int idx) {
+void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, int port, int idx) {
     printf("> %s::%s\n", __FILE__, __FUNCTION__);
     worker_thread->idx = idx;
+    worker_thread->filters = NULL;
+    tesr_filter_t *filter = NULL;
+    tesr_filter_t *cpfilter = NULL;
+    LL_FOREACH(config->filters, filter) {
+        printf("Prepend> %s\n", filter->filter);
+        cpfilter = (tesr_filter_t*)malloc(sizeof(tesr_filter_t));
+        cpfilter = memcpy(cpfilter, filter, sizeof(tesr_filter_t));
+        LL_PREPEND(worker_thread->filters, cpfilter);
+    }
     pthread_mutex_init(&worker_thread->lock, NULL);
     // This loop sits in the pthread
     worker_thread->port = port;
@@ -109,7 +119,7 @@ int sz = buf.st_size;
                 printf("thread = %d send_count %d\n", (int)pthread_self(), send_count++);
                 //printf("pthread = %d readable buffer %s\n", (int)pthread_self(), data.buffer);
                 //usleep(100);
-                if(should_echo(worker_data->buffer, worker_data->bytes)) {
+                if(should_echo(worker_data->buffer, worker_data->bytes, &worker_data->addr, worker_thread->filters)) {
                     sendto(worker_thread->sd, worker_data->buffer, worker_data->bytes, 0, (struct sockaddr*) &worker_data->addr, sizeof(worker_data->addr));
                 }
                 LL_DELETE(worker_thread->queue,worker_data);

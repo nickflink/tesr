@@ -74,8 +74,12 @@ int main(int argc, char** argv) {
     //for(int th = 0; th < tesr_config.num_worker_threads; th++)
     int th = 0;
     tesr_send_port_t *send_port; 
+    tesr_filter_t *filter = NULL;
+    LL_FOREACH(tesr_config.filters, filter) {
+        printf("tesr_Prepend> %s\n", filter->filter);
+    }
     LL_FOREACH(tesr_config.send_ports, send_port) {
-        init_worker(&worker_threads[th], send_port->port, th);
+        init_worker(&worker_threads[th], &tesr_config, send_port->port, th);
         //pthread_mutex_init(&worker_threads[th].lock, NULL);
         //// This loop sits in the pthread
         //worker_threads[th].event_loop = ev_loop_new(0);
