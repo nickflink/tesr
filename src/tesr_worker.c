@@ -80,6 +80,8 @@ void destroy_workers() {
         worker_threads = NULL;
     }
 }
+
+
 #ifdef USE_PIPES
 void inbox_cb_w(EV_P_ ev_io *w, int revents) {
     int idx;
@@ -107,7 +109,9 @@ int sz = buf.st_size;
                 printf("thread = %d send_count %d\n", (int)pthread_self(), send_count++);
                 //printf("pthread = %d readable buffer %s\n", (int)pthread_self(), data.buffer);
                 //usleep(100);
-                sendto(worker_thread->sd, worker_data->buffer, worker_data->bytes, 0, (struct sockaddr*) &worker_data->addr, sizeof(worker_data->addr));
+                if(should_echo(worker_data->buffer, worker_data->bytes)) {
+                    sendto(worker_thread->sd, worker_data->buffer, worker_data->bytes, 0, (struct sockaddr*) &worker_data->addr, sizeof(worker_data->addr));
+                }
                 LL_DELETE(worker_thread->queue,worker_data);
             }
             pthread_mutex_unlock(&worker_thread->lock);   //Don't forget unlocking
