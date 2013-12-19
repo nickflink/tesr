@@ -21,7 +21,6 @@ typedef struct main_thread_t {
     struct ev_io udp_read_watcher;
 } main_thread_t;
 main_thread_t main_thread;
-const int num_threads = 2;
 int next_thread_idx = 0;
 worker_thread_t *worker_threads;
 tesr_config_t tesr_config;
@@ -29,7 +28,7 @@ tesr_config_t tesr_config;
 static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     int th = next_thread_idx;
     printf("waking up th=%d\n", th);
-    if(++next_thread_idx >= num_threads) {
+    if(++next_thread_idx >= tesr_config.num_worker_threads) {
         next_thread_idx = 0;
     }
 #ifndef USE_PIPES
@@ -60,17 +59,23 @@ int main(int argc, char** argv) {
     printf("main_thread=%d", (int)pthread_self());
     init_config(&tesr_config, argc, argv);
     log_config(&tesr_config);
-    int ret = bind_dgram_socket(&main_thread.sd, &main_thread.addr, tesr_config.port);
+    if(tesr_config.num_worker_threads == 0) {
+        perror("at least one worker is required");
+        return 0;
+    }
+    int ret = bind_dgram_socket(&main_thread.sd, &main_thread.addr, tesr_config.recv_port);
     if (ret != 0) {
         perror("could not bind dgram socket");
     }
     
     main_thread.event_loop = EV_DEFAULT;  //or ev_default_loop (0);
     //Initialize pthread
-
-    worker_threads = create_workers(num_threads);
-    for(int th = 0; th < num_threads; th++) {
-        init_worker(&worker_threads[th], 1980+th, th);
+    worker_threads = create_workers(tesr_config.num_worker_threads);
+    //for(int th = 0; th < tesr_config.num_worker_threads; th++)
+    int th = 0;
+    tesr_send_port_t *send_port; 
+    LL_FOREACH(tesr_config.send_ports, send_port) {
+        init_worker(&worker_threads[th], send_port->port, th);
         //pthread_mutex_init(&worker_threads[th].lock, NULL);
         //// This loop sits in the pthread
         //worker_threads[th].event_loop = ev_loop_new(0);
@@ -83,6 +88,7 @@ int main(int argc, char** argv) {
         pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_create(&worker_threads[th].thread, &attr, worker_thread_start, &worker_threads[th]);
+        ++th;
     }
 
     ev_io_init(&main_thread.udp_read_watcher, udp_read_cb, main_thread.sd, EV_READ);
@@ -91,7 +97,7 @@ int main(int argc, char** argv) {
     // now wait for events to arrive
     ev_loop(main_thread.event_loop, 0);
     //Wait on threads for execution
-    for(int th = 0; th < num_threads; th++) {
+    for(int th = 0; th < tesr_config.num_worker_threads; th++) {
         pthread_join(worker_threads[th].thread, NULL);
         pthread_mutex_destroy(&worker_threads[th].lock);
     }
