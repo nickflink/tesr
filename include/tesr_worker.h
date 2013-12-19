@@ -5,7 +5,7 @@
 #include <ev.h> //needed for ev_loop & ev_io
 #include <stdio.h>
 #include <pthread.h> //needed for pthread_t
-
+#define USE_PIPES
 typedef struct worker_data_t {
     char buffer[BUFFER_LEN];
     struct sockaddr_in addr;
@@ -15,6 +15,7 @@ typedef struct worker_data_t {
 } worker_data_t;
 
 typedef struct worker_thread_t {
+    int idx;
     int sd;
     int port;
     struct sockaddr_in addr;
@@ -27,10 +28,14 @@ typedef struct worker_thread_t {
     ev_async async_watcher;
     pthread_mutex_t lock;
 } worker_thread_t;
-worker_thread_t *new_workers(int num);
+worker_thread_t *create_workers(int num);
 void* worker_thread_start(void* args);
-void init_worker(worker_thread_t *worker_thread, int port);
+void init_worker(worker_thread_t *worker_thread, int port, int idx);
 void log_worker(worker_thread_t *worker_thread);
-void delete_worker(worker_thread_t *);
+void destroy_workers();
+#ifdef USE_PIPES
+void inbox_cb_w(EV_P_ ev_io *w, int revents);
+#else //!USE_PIPES
 void async_echo_cb(EV_P_ ev_async *w, int revents);
+#endif //USE_PIPES
 #endif //TESR_FILTER_H

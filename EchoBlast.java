@@ -4,7 +4,7 @@ import java.util.*;
 
 public class EchoBlast {
     private static final int PORT_NUM = 1989;
-    private static final int NUM_PACKETS = 500;
+    private static final int NUM_PACKETS = 1000;
     private static final int SOCKET_TIMEOUT = 500;
     class Producer extends Thread {
         private static final String INET_ADDR = "127.0.0.1";
