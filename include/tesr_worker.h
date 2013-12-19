@@ -16,6 +16,7 @@ typedef struct worker_data_t {
 
 typedef struct worker_thread_t {
     int sd;
+    int port;
     struct sockaddr_in addr;
     int inbox_fd;
     int outbox_fd;
@@ -28,7 +29,7 @@ typedef struct worker_thread_t {
 } worker_thread_t;
 worker_thread_t *new_workers(int num);
 void* worker_thread_start(void* args);
-void init_worker(worker_thread_t *worker_thread);
+void init_worker(worker_thread_t *worker_thread, int port);
 void log_worker(worker_thread_t *worker_thread);
 void delete_worker(worker_thread_t *);
 void async_echo_cb(EV_P_ ev_async *w, int revents);

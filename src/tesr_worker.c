@@ -15,13 +15,11 @@ worker_thread_t *new_workers(int num) {
 }
 void* worker_thread_start(void* args) {
     printf("> %s::%s\n", __FILE__, __FUNCTION__);
-    printf("worker_thread_start=%d\n", (int)pthread_self());
+    printf("worker_thread_start=%d with me=%d\n", (int)pthread_self(), (int)&me);
     me = (worker_thread_t*)args;
-    log_worker((worker_thread_t*)args);
+    log_worker(me);
     printf("> %s::%s::%d\n", __FILE__, __FUNCTION__, __LINE__);
-    int port = 1981;
-    printf("> %s::%s::%d\n", __FILE__, __FUNCTION__, __LINE__);
-    int ret = bind_dgram_socket(&me->sd, &me->addr, port);
+    int ret = bind_dgram_socket(&me->sd, &me->addr, me->port);
     printf("> %s::%s::%d\n", __FILE__, __FUNCTION__, __LINE__);
     if (ret != 0) {
         perror("could not bind dgram socket");
@@ -30,14 +28,17 @@ void* worker_thread_start(void* args) {
     printf("> %s::%s\n", __FILE__, __FUNCTION__);
     return NULL;
 }
-void init_worker(worker_thread_t *worker_thread) {
+void init_worker(worker_thread_t *worker_thread, int port) {
     printf("> %s::%s\n", __FILE__, __FUNCTION__);
     printf("implement %s", __FUNCTION__);
     worker_thread->event_loop = ev_loop_new(0);
+    pthread_mutex_init(&worker_thread->lock, NULL);
+    // This loop sits in the pthread
+    worker_thread->port = port;
 }
 void log_worker(worker_thread_t *worker_thread) {
     printf("> %s::%s\n", __FILE__, __FUNCTION__);
-    printf("pthread_self[%d][%d]worker_thread.pthread\n",(int)pthread_self(), (int)worker_thread->thread);
+    printf("pthread_self[%d][%d]worker_thread.pthread\n\tport=%d\n",(int)pthread_self(), (int)worker_thread->thread, worker_thread->port);
 }
 void delete_worker(worker_thread_t *worker) {
     printf("> %s::%s\n", __FILE__, __FUNCTION__);
