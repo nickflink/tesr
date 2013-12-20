@@ -1,6 +1,8 @@
 #ifndef TESR_CONFIG_H
 #define TESR_CONFIG_H
-#define DEFAULT_PORT 7
+#define DEFAULT_RECV_PORT 7
+#define DEFAULT_IP_RATE_LIMIT_MAX 0
+#define DEFAULT_IP_RATE_LIMIT_PERIOD 0
 #include <arpa/inet.h>
 #include <tesr_common.h>
 typedef struct tesr_send_port_t {

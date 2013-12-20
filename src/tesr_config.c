@@ -42,7 +42,9 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
     //
     // DEFAULTS
     //
-    tesr_config->recv_port = DEFAULT_PORT;
+    tesr_config->recv_port = DEFAULT_RECV_PORT;
+    tesr_config->ip_rate_limit_max = DEFAULT_IP_RATE_LIMIT_MAX;
+    tesr_config->ip_rate_limit_period = DEFAULT_IP_RATE_LIMIT_PERIOD;
     tesr_config->num_worker_threads = 0;
     tesr_config->filters = NULL;
     tesr_config->send_ports = NULL;
@@ -79,17 +81,17 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
     }
     // get the value of ip_rate_limit_max
     if(config_lookup_int(&cfg, "ip_rate_limit_max", &configPort)) {
-        printf("\nip_rate_limit_max: %d\n", configPort);
+        LOG_INFO("\nip_rate_limit_max: %d\n", configPort);
         tesr_config->ip_rate_limit_max = configPort;
     } else {
-        printf("\nNo 'ip_rate_limit_max' setting in configuration file.");
+        LOG_INFO("\nNo 'ip_rate_limit_max' setting in configuration file disabling.");
     }
     // get the value of ip_rate_limit_period
     if(config_lookup_int(&cfg, "ip_rate_limit_period", &configPort)) {
-        printf("\nip_rate_limit_period: %d\n", configPort);
+        LOG_INFO("\nip_rate_limit_period: %d\n", configPort);
         tesr_config->ip_rate_limit_period = configPort;
     } else {
-        printf("\nNo 'ip_rate_limit_period' setting in configuration file.");
+        LOG_INFO("\nNo 'ip_rate_limit_period' setting in configuration file.");
     }
     //get the value of send_ports 
     config_setting_t *send_ports = config_lookup(&cfg, "send_ports");
