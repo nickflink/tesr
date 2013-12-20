@@ -17,7 +17,7 @@ OBJS = $(OBJ_DIR)/tesr.o \
 
 CLASSES = EchoBlast.java
 
-all: bin/udp-echo-server bin/tesr $(CLASSES:.java=.class)
+all: bin/tesr $(CLASSES:.java=.class)
 
 clean:
 	$(RM) $(OBJ_DIR)/* $(BIN_DIR)/* *.class
