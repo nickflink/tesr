@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <pthread.h> //needed for pthread_t
 #include <tesr_config.h>
+#include <tesr_rate_limiter.h>
 #define USE_PIPES
 typedef struct worker_data_t {
     char buffer[BUFFER_LEN];
@@ -29,11 +30,12 @@ typedef struct worker_thread_t {
     ev_async async_watcher;
     pthread_mutex_t lock;
     tesr_filter_t *filters;
+    rate_limiter_t *rate_limiter;
 } worker_thread_t;
 worker_thread_t *create_workers(int num);
 void* worker_thread_start(void* args);
 //void init_worker(worker_thread_t *worker_thread, int port, int idx);
-void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, int port, int idx);
+void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, rate_limiter_t *rate_limiter, int port, int idx);
 void log_worker(worker_thread_t *worker_thread);
 void destroy_workers();
 #ifdef USE_PIPES

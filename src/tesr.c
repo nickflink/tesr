@@ -68,15 +68,18 @@ int main(int argc, char** argv) {
         LOG_ERROR("could not bind dgram socket");
         return 0;
     }
-    
     main_thread.event_loop = EV_DEFAULT;  //or ev_default_loop (0);
+    //Set up rate limiting
+    rate_limiter_t *rate_limiter = create_rate_limiter();
+    init_rate_limiter(rate_limiter, tesr_config.ip_rate_limit_max, tesr_config.ip_rate_limit_period);
+
     //Initialize pthread
     worker_threads = create_workers(tesr_config.num_worker_threads);
     //for(int th = 0; th < tesr_config.num_worker_threads; th++)
     int th = 0;
     tesr_send_port_t *send_port; 
     LL_FOREACH(tesr_config.send_ports, send_port) {
-        init_worker(&worker_threads[th], &tesr_config, send_port->port, th);
+        init_worker(&worker_threads[th], &tesr_config, rate_limiter, send_port->port, th);
         //pthread_mutex_init(&worker_threads[th].lock, NULL);
         //// This loop sits in the pthread
         //worker_threads[th].event_loop = ev_loop_new(0);

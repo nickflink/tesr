@@ -70,13 +70,28 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
         printf("\n%s:%d - %s", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);
     }
-    /* Get the configuration file name. */
+    // get the value of recv_port
     if(config_lookup_int(&cfg, "recv_port", &configPort)) {
         LOG_DEBUG("\nrecv_port: %d\n", configPort);
         tesr_config->recv_port = configPort;
     } else {
         LOG_DEBUG("\nNo 'recv_port' setting in configuration file.");
     }
+    // get the value of ip_rate_limit_max
+    if(config_lookup_int(&cfg, "ip_rate_limit_max", &configPort)) {
+        printf("\nip_rate_limit_max: %d\n", configPort);
+        tesr_config->ip_rate_limit_max = configPort;
+    } else {
+        printf("\nNo 'ip_rate_limit_max' setting in configuration file.");
+    }
+    // get the value of ip_rate_limit_period
+    if(config_lookup_int(&cfg, "ip_rate_limit_period", &configPort)) {
+        printf("\nip_rate_limit_period: %d\n", configPort);
+        tesr_config->ip_rate_limit_period = configPort;
+    } else {
+        printf("\nNo 'ip_rate_limit_period' setting in configuration file.");
+    }
+    //get the value of send_ports 
     config_setting_t *send_ports = config_lookup(&cfg, "send_ports");
     int send_port_idx = 0;
     if(send_ports) {

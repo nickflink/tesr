@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tesr_common.h>
+#include <tesr_rate_limiter.h>
 #include <unistd.h> // for usleep
 #include <utlist.h>
 
@@ -43,7 +44,7 @@ void* worker_thread_start(void* args) {
 }
 
 //called on the main thread
-void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, int port, int idx) {
+void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, rate_limiter_t *rate_limiter, int port, int idx) {
     LOG_LOC;
     worker_thread->idx = idx;
     worker_thread->filters = NULL;
@@ -55,6 +56,7 @@ void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, int port
         cpfilter = memcpy(cpfilter, filter, sizeof(tesr_filter_t));
         LL_PREPEND(worker_thread->filters, cpfilter);
     }
+    worker_thread->rate_limiter = rate_limiter;
     pthread_mutex_init(&worker_thread->lock, NULL);
     // This loop sits in the pthread
     worker_thread->port = port;
@@ -88,6 +90,23 @@ void destroy_workers() {
     }
 }
 
+static int should_echo(char *buffer, socklen_t bytes, struct sockaddr_in *addr, tesr_filter_t *filters, rate_limiter_t *rate_limiter) {
+    int ret = 0;
+    if(buffer != NULL) {
+        buffer[bytes] = '\0';
+        char ip[INET_ADDRSTRLEN];
+        inet_ntop(addr->sin_family, &addr->sin_addr, ip, INET_ADDRSTRLEN);
+        LOG_DEBUG("should_echo:%s from:%s:%d\n", buffer, ip, ntohs(addr->sin_port));
+        if(is_correctly_formatted(buffer)) {
+            if(passes_filters(ip, filters)) {
+                if(is_under_rate_limit(rate_limiter, ip)) {
+                    ret = 1;
+                }
+            }
+        }
+    }
+    return ret;
+}
 
 #ifdef USE_PIPES
 void inbox_cb_w(EV_P_ ev_io *w, int revents) {
@@ -111,7 +130,7 @@ int sz = buf.st_size;
             worker_data_t *worker_data = worker_thread->queue;
             if(worker_data) {
                 static int send_count = 0;
-                if(should_echo(worker_data->buffer, worker_data->bytes, &worker_data->addr, worker_thread->filters)) {
+                if(should_echo(worker_data->buffer, worker_data->bytes, &worker_data->addr, worker_thread->filters, worker_thread->rate_limiter)) {
                     ++send_count;
                     LOG_DEBUG("[OK]>thread = %d send_count %d\n", (int)pthread_self(), send_count);
                     sendto(worker_thread->sd, worker_data->buffer, worker_data->bytes, 0, (struct sockaddr*) &worker_data->addr, sizeof(worker_data->addr));

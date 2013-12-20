@@ -9,6 +9,8 @@ typedef struct tesr_send_port_t {
 } tesr_send_port_t;
 typedef struct tesr_config_t {
     int recv_port;
+    int ip_rate_limit_max;
+    int ip_rate_limit_period;
     int num_worker_threads;
     tesr_send_port_t *send_ports;
     tesr_filter_t *filters;
