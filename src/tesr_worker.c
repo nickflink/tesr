@@ -21,39 +21,36 @@ static worker_thread_t *get_worker_thread(int idx) {
 }
 
 worker_thread_t *create_workers(int num) {
-    printf("> %s::%s\n", __FILE__, __FUNCTION__);
+    LOG_LOC;
     if(worker_threads) {
-        perror("cant create workers more than once");
+        LOG_ERROR("cant create workers more than once");
     }
     num_threads = num;
     worker_threads = (worker_thread_t*)malloc(num*sizeof(worker_thread_t));
     return worker_threads;
 }
 void* worker_thread_start(void* args) {
-    printf("> %s::%s\n", __FILE__, __FUNCTION__);
-    printf("worker_thread_start=%d\n", (int)pthread_self());
+    LOG_LOC;
+    LOG_INFO("[TID] %d %s\n", (int)pthread_self(), __FUNCTION__);
     worker_thread_t *me = (worker_thread_t*)args;
     log_worker(me);
-    printf("> %s::%s::%d\n", __FILE__, __FUNCTION__, __LINE__);
     int ret = bind_dgram_socket(&me->sd, &me->addr, me->port);
-    printf("> %s::%s::%d\n", __FILE__, __FUNCTION__, __LINE__);
     if (ret != 0) {
-        perror("could not bind dgram socket");
+        LOG_ERROR("could not bind dgram socket");
     }
     ev_loop(me->event_loop, 0);
-    printf("> %s::%s\n", __FILE__, __FUNCTION__);
     return NULL;
 }
 
 //called on the main thread
 void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, int port, int idx) {
-    printf("> %s::%s\n", __FILE__, __FUNCTION__);
+    LOG_LOC;
     worker_thread->idx = idx;
     worker_thread->filters = NULL;
     tesr_filter_t *filter = NULL;
     tesr_filter_t *cpfilter = NULL;
     LL_FOREACH(config->filters, filter) {
-        printf("Prepend> %s\n", filter->filter);
+        LOG_DEBUG("Prepend> %s\n", filter->filter);
         cpfilter = (tesr_filter_t*)malloc(sizeof(tesr_filter_t));
         cpfilter = memcpy(cpfilter, filter, sizeof(tesr_filter_t));
         LL_PREPEND(worker_thread->filters, cpfilter);
@@ -64,7 +61,7 @@ void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, int port
 #ifdef USE_PIPES
     int fds[2];
     if(pipe(fds)) {
-        perror("Can't create notify pipe");
+        LOG_ERROR("Can't create notify pipe");
         return;
     }
     worker_thread->inbox_fd = fds[0];
@@ -79,11 +76,11 @@ void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, int port
 #endif
 }
 void log_worker(worker_thread_t *worker_thread) {
-    printf("> %s::%s\n", __FILE__, __FUNCTION__);
-    printf("pthread_self[%d][%d]worker_thread.pthread\n\tport=%d\n",(int)pthread_self(), (int)worker_thread->thread, worker_thread->port);
+    LOG_LOC;
+    LOG_INFO("worker_thread[%d]{port=%d}\n",(int)pthread_self(), worker_thread->port);
 }
 void destroy_workers() {
-    printf("> %s::%s\n", __FILE__, __FUNCTION__);
+    LOG_LOC;
     if(worker_threads) {
         free(worker_threads);
         num_threads = 0;
@@ -95,7 +92,6 @@ void destroy_workers() {
 #ifdef USE_PIPES
 void inbox_cb_w(EV_P_ ev_io *w, int revents) {
     int idx;
-    //printf("pthread = %d readable\n", (int)pthread_self());
     size_t len = sizeof(int);
 //check the size
 //fseek(w->fd, 0L, SEEK_END);
@@ -106,21 +102,21 @@ fstat(w->fd, &buf);
 int sz = buf.st_size;
     int ret = read(w->fd, &idx, len);
     if (ret != len) {
-        perror("Can't read from connection notify pipe\n");
-        printf("[KO] ret = %d != %d len sz = %d\n", ret, (int)len, sz);
+        LOG_ERROR("Can't read from connection notify pipe\n");
+        LOG_INFO("[KO] ret = %d != %d len sz = %d\n", ret, (int)len, sz);
     } else {
         worker_thread_t *worker_thread = get_worker_thread(idx);
         if(worker_thread) {
             pthread_mutex_lock(&worker_thread->lock);     //Don't forget locking
             worker_data_t *worker_data = worker_thread->queue;
             if(worker_data) {
-                printf("[OK] ret = %d == %d len sz = %d\n", ret, (int)len, sz);
                 static int send_count = 0;
-                printf("thread = %d send_count %d\n", (int)pthread_self(), send_count++);
-                //printf("pthread = %d readable buffer %s\n", (int)pthread_self(), data.buffer);
-                //usleep(100);
                 if(should_echo(worker_data->buffer, worker_data->bytes, &worker_data->addr, worker_thread->filters)) {
+                    ++send_count;
+                    LOG_DEBUG("[OK]>thread = %d send_count %d\n", (int)pthread_self(), send_count);
                     sendto(worker_thread->sd, worker_data->buffer, worker_data->bytes, 0, (struct sockaddr*) &worker_data->addr, sizeof(worker_data->addr));
+                } else {
+                    LOG_DEBUG("[KO]Xthread = %d send_count %d\n", (int)pthread_self(), send_count);
                 }
                 LL_DELETE(worker_thread->queue,worker_data);
             }

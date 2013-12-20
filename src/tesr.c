@@ -6,7 +6,7 @@
 #include <arpa/inet.h>
 #include <ev.h>
 #include <pthread.h>
-#include <stdio.h> // for puts
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tesr_common.h>
@@ -27,7 +27,6 @@ tesr_config_t tesr_config;
 
 static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     int th = next_thread_idx;
-    printf("waking up th=%d\n", th);
     if(++next_thread_idx >= tesr_config.num_worker_threads) {
         next_thread_idx = 0;
     }
@@ -44,11 +43,11 @@ static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     LL_APPEND(worker_threads[th].queue, data);
     static int recv_count = 0;
     ++recv_count;
-    printf("tid = %d udp_read_cb %d\n", (int)pthread_self(), recv_count);
+    LOG_DEBUG("[OK]<thread = %d recv_count %d\n", (int)pthread_self(), recv_count);
 #ifdef USE_PIPES
     size_t len = sizeof(th);
     if (write(worker_threads[th].outbox_fd, &th, len) != len) {
-        perror("Fail to writing to connection notify pipe");
+        LOG_ERROR("Fail to writing to connection notify pipe");
     }
 #endif
     pthread_mutex_unlock(&worker_threads[th].lock);   //Don't forget unlocking
@@ -56,16 +55,18 @@ static void udp_read_cb(EV_P_ ev_io *w, int revents) {
 }
 
 int main(int argc, char** argv) {
-    printf("main_thread=%d", (int)pthread_self());
+    LOG_LOC;
+    LOG_INFO("[TID] %d %s\n", (int)pthread_self(), __FUNCTION__);
     init_config(&tesr_config, argc, argv);
     log_config(&tesr_config);
     if(tesr_config.num_worker_threads == 0) {
-        perror("at least one worker is required");
+        LOG_ERROR("at least one worker is required");
         return 0;
     }
     int ret = bind_dgram_socket(&main_thread.sd, &main_thread.addr, tesr_config.recv_port);
     if (ret != 0) {
-        perror("could not bind dgram socket");
+        LOG_ERROR("could not bind dgram socket");
+        return 0;
     }
     
     main_thread.event_loop = EV_DEFAULT;  //or ev_default_loop (0);
@@ -74,10 +75,6 @@ int main(int argc, char** argv) {
     //for(int th = 0; th < tesr_config.num_worker_threads; th++)
     int th = 0;
     tesr_send_port_t *send_port; 
-    tesr_filter_t *filter = NULL;
-    LL_FOREACH(tesr_config.filters, filter) {
-        printf("tesr_Prepend> %s\n", filter->filter);
-    }
     LL_FOREACH(tesr_config.send_ports, send_port) {
         init_worker(&worker_threads[th], &tesr_config, send_port->port, th);
         //pthread_mutex_init(&worker_threads[th].lock, NULL);

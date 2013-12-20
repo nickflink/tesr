@@ -28,6 +28,7 @@ public class EchoBlast {
                     byte arr[] = sentTimeMsg.getBytes( );
                     DatagramPacket dpack = new DatagramPacket(arr, arr.length, add, PORT_NUM);
                     dsock.send(dpack);// send the packet
+                    System.out.println("Sent "+i+"/"+NUM_PACKETS);
                     //dsock.close();
                 }
             } catch (java.net.UnknownHostException e) {
