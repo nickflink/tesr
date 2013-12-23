@@ -32,7 +32,7 @@ worker_thread_t *create_workers(int num) {
 }
 void* worker_thread_start(void* args) {
     LOG_LOC;
-    LOG_INFO("[TID] %d %s\n", (int)pthread_self(), __FUNCTION__);
+    LOG_INFO("[TID] 0x%zx %s\n", (size_t)pthread_self(), __FUNCTION__);
     worker_thread_t *me = (worker_thread_t*)args;
     log_worker(me);
     int ret = bind_dgram_socket(&me->sd, &me->addr, me->port);
@@ -79,7 +79,7 @@ void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, rate_lim
 }
 void log_worker(worker_thread_t *worker_thread) {
     LOG_LOC;
-    LOG_INFO("worker_thread[%d]{port=%d}\n",(int)pthread_self(), worker_thread->port);
+    LOG_INFO("worker_thread[0x%zx]{port=%d}\n",(size_t)pthread_self(), worker_thread->port);
 }
 void destroy_workers() {
     LOG_LOC;

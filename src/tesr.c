@@ -56,7 +56,7 @@ static void udp_read_cb(EV_P_ ev_io *w, int revents) {
 
 int main(int argc, char** argv) {
     LOG_LOC;
-    LOG_INFO("[TID] %d %s\n", (int)pthread_self(), __FUNCTION__);
+    LOG_INFO("[TID] 0x%zx %s\n", (size_t)pthread_self(), __FUNCTION__);
     init_config(&tesr_config, argc, argv);
     log_config(&tesr_config);
     if(tesr_config.num_worker_threads == 0) {
@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
     // now wait for events to arrive
     ev_loop(main_thread.event_loop, 0);
     //Wait on threads for execution
-    for(int th = 0; th < tesr_config.num_worker_threads; th++) {
+    for(th = 0; th < tesr_config.num_worker_threads; th++) {
         pthread_join(worker_threads[th].thread, NULL);
         pthread_mutex_destroy(&worker_threads[th].lock);
     }

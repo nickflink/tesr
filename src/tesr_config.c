@@ -54,8 +54,8 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
     // Configuration File
     //
     config_t cfg;
-    char *local_config_file_name = "udp_net_check.conf";
-    char *system_config_file_name = "/etc/udp_net_check.conf";
+    char *local_config_file_name = "tesr.conf";
+    char *system_config_file_name = "/etc/tesr.conf";
     /*Initialization */
     config_init(&cfg);
     int config_loaded = 0;
