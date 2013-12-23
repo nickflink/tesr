@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
         return 0;
     }
     int ret = bind_dgram_socket(&main_thread.sd, &main_thread.addr, tesr_config.recv_port);
-    if (ret != 0) {
+    if (ret == 0) {
         LOG_ERROR("could not bind dgram socket");
         return 0;
     }

@@ -36,7 +36,7 @@ void* worker_thread_start(void* args) {
     worker_thread_t *me = (worker_thread_t*)args;
     log_worker(me);
     int ret = bind_dgram_socket(&me->sd, &me->addr, me->port);
-    if (ret != 0) {
+    if (ret == 0) {
         LOG_ERROR("could not bind dgram socket");
     }
     ev_loop(me->event_loop, 0);
