@@ -6,30 +6,29 @@ public class EchoBlast {
     private static final int PORT_NUM = 1989;
     private static final int NUM_PACKETS = 50;
     private static final int SOCKET_TIMEOUT = 500;
-    class Producer extends Thread {
+
+    private static boolean producerFinished = false;
+    private static boolean consumerFinished = false;
+    class Producer implements Runnable {
         private static final String INET_ADDR = "127.0.0.1";
         private DatagramSocket dsock;
-        public Producer(DatagramSocket dsock) {
+        private EchoBlast callback;
+        public Producer(DatagramSocket dsock, EchoBlast callback) {
             this.dsock = dsock;
+            this.callback = callback;
         }
         public void run() {
             System.out.println("> sendUdpThread");
             try {
                 InetAddress add = InetAddress.getByName(INET_ADDR);
-                //DatagramSocket dsock = new DatagramSocket( );
-                //while(true) {
                 for(int i = 0; i < NUM_PACKETS; i++) {
-                    Date sendTime = new Date( ); // note the time of sending the message
+                    Date sendTime = new Date( );
                     //ok
-                    String sentTimeMsg = ""+sendTime.getTime();//"This is client calling";
-                    //sentTimeMsg = ""+i;//"This is just the count";
-                    //sentTimeMsg = "a"+sendTime.getTime();//"This is client calling";
-                    //sentTimeMsg = sendTime.getTime()+"b";//"This is client calling";
+                    String sentTimeMsg = ""+sendTime.getTime();
                     byte arr[] = sentTimeMsg.getBytes( );
                     DatagramPacket dpack = new DatagramPacket(arr, arr.length, add, PORT_NUM);
                     dsock.send(dpack);// send the packet
                     System.out.println("Sent "+i+"/"+NUM_PACKETS);
-                    //dsock.close();
                 }
             } catch (java.net.UnknownHostException e) {
                 System.out.println("caught java.net.UnknownHostException");
@@ -39,13 +38,16 @@ public class EchoBlast {
                 System.out.println("caught java.io.IOException");
             }
             System.out.println("< sendUdp");
+            callback.onProducerFinished();
         }
     }
-    class Consumer extends Thread {
+    class Consumer implements Runnable {
         private static final String INET_ADDR = "127.0.0.1";
         private DatagramSocket dsock;
-        public Consumer(DatagramSocket dsock) {
+        private EchoBlast callback;
+        public Consumer(DatagramSocket dsock, EchoBlast callback) {
             this.dsock = dsock;
+            this.callback = callback;
         }
         public void run() {
             System.out.println("> recvUdpThread");
@@ -59,13 +61,11 @@ public class EchoBlast {
                 while(true) {
                     System.out.println("> creating buffer with length "+bufSize);
                     byte[] buf = new byte[bufSize];
-                    //DatagramSocket dsock = new DatagramSocket( );
                     DatagramPacket dpack = new DatagramPacket(buf, buf.length);
                     System.out.println("> dsock.receive");
                     dsock.receive(dpack); // receive the packet
                     ++count;
                     System.out.println("> dsock.close");
-                    //dsock.close();
                     String message = new String(dpack.getData( ));
                     Date receiveTime = new Date( ); // note the time of receiving the message
                     long cTime = receiveTime.getTime();
@@ -84,30 +84,51 @@ public class EchoBlast {
                 System.out.println("caught java.io.IOException");
             } catch (java.lang.NumberFormatException e) {
                 System.out.println("caught java.lang.NumberFormatException");
-            //} catch (java.net.SocketTimeoutException e) {
-            //    System.out.println("caught java.net.SocketTimeoutException");
             }
             System.out.println("< recvUdp");
+            callback.onConsumerFinished();
         }
+    }
+
+    private void onProducerFinished() {
+        System.out.println("> producerFinished");
+        this.producerFinished = true;
+    }
+
+    private void onConsumerFinished() {
+        System.out.println("> onConsumerFinished");
+        this.consumerFinished = true;
+    }
+
+    private boolean finished() {
+        return producerFinished && consumerFinished;
     }
 
     private void run() {
         try {
-            DatagramSocket dsock = new DatagramSocket( );
+            DatagramSocket dsock = new DatagramSocket();
             dsock.setSoTimeout(SOCKET_TIMEOUT);
-            Consumer consumer = new Consumer(dsock);
-            Producer producer = new Producer(dsock);
-            consumer.start();
-            producer.start();
+            Consumer consumerTask = new Consumer(dsock, this);
+            Producer producerTask = new Producer(dsock, this);
+            Thread consumerThread = new Thread(consumerTask);
+            Thread producerThread = new Thread(producerTask);
+            consumerThread.start();
+            producerThread.start();
         } catch (java.net.SocketException e) {
             System.out.println("caught java.net.SocketException");
         }
     }
 
     public static void main( String args[] ) throws Exception {
-        //sendUdp();
-        //recvUdp();
         EchoBlast eb = new EchoBlast();
         eb.run();
+        boolean finished = false;
+        while(!finished) {
+            Thread.sleep(1);
+            if(eb.finished()) {
+                finished = true;
+            }
+        }
     }
-}// - See more at: http://way2java.com/networking/echo-server-udp/#sthash.Hal1fOQp.dpuf
+}
+
