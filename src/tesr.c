@@ -66,20 +66,10 @@ int main(int argc, char** argv) {
 
     //Initialize pthread
     worker_threads = create_workers(tesr_config.num_worker_threads);
-    //for(int th = 0; th < tesr_config.num_worker_threads; th++)
     int th = 0;
     tesr_send_port_t *send_port; 
     LL_FOREACH(tesr_config.send_ports, send_port) {
         init_worker(&worker_threads[th], &tesr_config, rate_limiter, send_port->port, th);
-        //pthread_mutex_init(&worker_threads[th].lock, NULL);
-        //// This loop sits in the pthread
-        //worker_threads[th].event_loop = ev_loop_new(0);
-        //worker_threads[th].port = 1980+th;
-
-        //This block is specifically used pre-empting thread (i.e. temporary interruption and suspension of a task, without asking for its cooperation, with the intention to resume that task later.)
-        //This takes into account thread safety
-        //ev_async_init(&worker_threads[th].async_watcher, async_echo_cb);
-        //ev_async_start(worker_threads[th].event_loop, &worker_threads[th].async_watcher);
         pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_create(&worker_threads[th].thread, &attr, worker_thread_start, &worker_threads[th]);
