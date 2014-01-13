@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
     main_thread.event_loop = EV_DEFAULT;  //or ev_default_loop (0);
     //Set up rate limiting
     rate_limiter_t *rate_limiter = create_rate_limiter();
-    init_rate_limiter(rate_limiter, tesr_config.ip_rate_limit_max, tesr_config.ip_rate_limit_period);
+    init_rate_limiter(rate_limiter, tesr_config.ip_rate_limit_max, tesr_config.ip_rate_limit_period, tesr_config.ip_rate_limit_prune_mark);
 
     //Initialize pthread
     worker_threads = create_workers(tesr_config.num_worker_threads);

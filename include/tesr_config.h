@@ -3,6 +3,7 @@
 #define DEFAULT_RECV_PORT 7
 #define DEFAULT_IP_RATE_LIMIT_MAX 0
 #define DEFAULT_IP_RATE_LIMIT_PERIOD 0
+#define DEFAULT_IP_RATE_LIMIT_PRUNE_MARK 0
 #include <arpa/inet.h>
 #include <tesr_common.h>
 typedef struct tesr_send_port_t {
@@ -13,6 +14,7 @@ typedef struct tesr_config_t {
     int recv_port;
     int ip_rate_limit_max;
     int ip_rate_limit_period;
+    int ip_rate_limit_prune_mark;
     int num_worker_threads;
     tesr_send_port_t *send_ports;
     tesr_filter_t *filters;
