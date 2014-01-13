@@ -41,7 +41,7 @@ int is_under_rate_limit(rate_limiter_t *rate_limiter, char *ip) {
             rl = malloc(sizeof(rate_limit_struct_t));
             time(&rl->last_check);
             strncpy(rl->ip, ip, INET_ADDRSTRLEN);
-            rl->count = 1;
+            rl->count = 0;
             HASH_ADD_STR( rate_limiter->rate_limit_map, ip, rl);
         }
         ++rl->count;

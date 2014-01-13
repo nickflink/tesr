@@ -23,11 +23,12 @@ static worker_thread_t *get_worker_thread(int idx) {
 
 worker_thread_t *create_workers(int num) {
     LOG_LOC;
-    if(worker_threads) {
+    if(worker_threads == NULL) {
+        num_threads = num;
+        worker_threads = (worker_thread_t*)malloc(num*sizeof(worker_thread_t));
+    } else {
         LOG_ERROR("cant create workers more than once");
     }
-    num_threads = num;
-    worker_threads = (worker_thread_t*)malloc(num*sizeof(worker_thread_t));
     return worker_threads;
 }
 void* worker_thread_start(void* args) {
@@ -87,6 +88,8 @@ void destroy_workers() {
         free(worker_threads);
         num_threads = 0;
         worker_threads = NULL;
+    } else {
+        LOG_ERROR("no workers to destroy");
     }
 }
 

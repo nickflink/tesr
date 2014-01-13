@@ -56,7 +56,7 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
     config_t cfg;
     char *local_config_file_name = "tesr.conf";
     char *system_config_file_name = "/etc/tesr.conf";
-    /*Initialization */
+    //Initialization
     config_init(&cfg);
     int config_loaded = 0;
     /* Read the file. If there is an error, report it and exit. */
