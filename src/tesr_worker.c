@@ -61,7 +61,6 @@ void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, rate_lim
     pthread_mutex_init(&worker_thread->lock, NULL);
     // This loop sits in the pthread
     worker_thread->port = port;
-#ifdef USE_PIPES
     int fds[2];
     if(pipe(fds)) {
         LOG_ERROR("Can't create notify pipe");
@@ -72,11 +71,6 @@ void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, rate_lim
     worker_thread->event_loop = ev_loop_new(0);
     ev_io_init(&worker_thread->inbox_watcher, inbox_cb_w, worker_thread->inbox_fd, EV_READ);
     ev_io_start(worker_thread->event_loop, &worker_thread->inbox_watcher);
-#else //!USE_PIPES
-    worker_thread->event_loop = ev_loop_new(0);
-    ev_async_init(&worker_thread->async_watcher, async_echo_cb);
-    ev_async_start(worker_thread->event_loop, &worker_thread->async_watcher);
-#endif
 }
 void log_worker(worker_thread_t *worker_thread) {
     LOG_LOC;
@@ -111,21 +105,13 @@ static int should_echo(char *buffer, socklen_t bytes, struct sockaddr_in *addr, 
     return ret;
 }
 
-#ifdef USE_PIPES
 void inbox_cb_w(EV_P_ ev_io *w, int revents) {
     int idx;
     size_t len = sizeof(int);
-//check the size
-//fseek(w->fd, 0L, SEEK_END);
-//int sz = ftell(w->fd);
-//fseek(w->fd, 0L, SEEK_SET);
-struct stat buf;
-fstat(w->fd, &buf);
-int sz = buf.st_size;
     int ret = read(w->fd, &idx, len);
     if (ret != len) {
         LOG_ERROR("Can't read from connection notify pipe\n");
-        LOG_INFO("[KO] ret = %d != %d len sz = %d\n", ret, (int)len, sz);
+        LOG_INFO("[KO] ret = %d != %d len\n", ret, (int)len);
     } else {
         worker_thread_t *worker_thread = get_worker_thread(idx);
         if(worker_thread) {
@@ -146,21 +132,4 @@ int sz = buf.st_size;
         }
     }
 }
-#else //!USE_PIPES
-void async_echo_cb(EV_P_ ev_async *w, int revents) {
-    printf("> %s::%s\n", __FILE__, __FUNCTION__);
-    pthread_mutex_lock(&me->lock);     //Don't forget locking
-    worker_data_t *data, *tmp;
-    LL_FOREACH_SAFE(me->queue, data, tmp) {
-        sendto(me->sd, data->buffer, data->bytes, 0, (struct sockaddr*) &data->addr, sizeof(data->addr));
-        //TODO: free data
-        usleep(10);
-        static int async_count = 0;
-        ++async_count;
-        printf("tid = %d async_cb %d\n", (int)pthread_self(), async_count);
-        LL_DELETE(me->queue, data);
-    }
-    pthread_mutex_unlock(&me->lock);   //Don't forget unlocking
-}
-#endif //USE_PIPES
 

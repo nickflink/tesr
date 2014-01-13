@@ -30,28 +30,19 @@ static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     if(++next_thread_idx >= tesr_config.num_worker_threads) {
         next_thread_idx = 0;
     }
-#ifndef USE_PIPES
-    if (ev_async_pending(&worker_threads[th].async_watcher)==0) { //the event has not yet been processed (or even noted) by the event loop? (i.e. Is it serviced? If yes then proceed to)
-        ev_async_send(worker_threads[th].event_loop, &worker_threads[th].async_watcher); //Sends/signals/activates the given ev_async watcher, that is, feeds an EV_ASYNC event on the watcher into the event loop.
-    }
-#endif //USE_PIPES
     worker_data_t *data = ((worker_data_t *)malloc(sizeof(worker_data_t)));
     data->addr_len = sizeof(struct sockaddr_in);
     data->bytes = recvfrom(main_thread.sd, data->buffer, sizeof(data->buffer) - 1, 0, (struct sockaddr*) &data->addr, (socklen_t *) &data->addr_len);
-//DOLOCK
     pthread_mutex_lock(&worker_threads[th].lock);     //Don't forget locking
     LL_APPEND(worker_threads[th].queue, data);
     static int recv_count = 0;
     ++recv_count;
     LOG_DEBUG("[OK]<thread = %d recv_count %d\n", (int)pthread_self(), recv_count);
-#ifdef USE_PIPES
     size_t len = sizeof(th);
     if (write(worker_threads[th].outbox_fd, &th, len) != len) {
         LOG_ERROR("Fail to writing to connection notify pipe");
     }
-#endif
     pthread_mutex_unlock(&worker_threads[th].lock);   //Don't forget unlocking
-//UNLOCK
 }
 
 int main(int argc, char** argv) {
