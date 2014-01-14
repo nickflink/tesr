@@ -5,11 +5,12 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 
-public class EchoBlast {
+public class EchoBlast extends Thread {
     private static final int PORT_NUM = 1989;
     private static final int NUM_PACKETS = 50;
-    private static final int SOCKET_TIMEOUT = 500;
+    private static final int ECHO_BLAST_TIME_LIMIT = 500;
 
+    private DatagramSocket dsock = null;
     private boolean producerFinished = false;
     private boolean consumerFinished = false;
     private Thread consumerThread = null;
@@ -18,8 +19,8 @@ public class EchoBlast {
     private long [] resultTimes = new long[NUM_PACKETS];
     class Producer implements Runnable {
         private static final String INET_ADDR = "127.0.0.1";
-        private DatagramSocket dsock;
-        private EchoBlast callback;
+        private DatagramSocket dsock = null;
+        private EchoBlast callback = null;
         public Producer(DatagramSocket dsock, EchoBlast callback) {
             this.dsock = dsock;
             this.callback = callback;
@@ -50,8 +51,8 @@ public class EchoBlast {
     }
     class Consumer implements Runnable {
         private static final String INET_ADDR = "127.0.0.1";
-        private DatagramSocket dsock;
-        private EchoBlast callback;
+        private DatagramSocket dsock = null;
+        private EchoBlast callback = null;
         public Consumer(DatagramSocket dsock, EchoBlast callback) {
             this.dsock = dsock;
             this.callback = callback;
@@ -132,64 +133,69 @@ public class EchoBlast {
         double responseSum = 0.0;
         for(long result : this.resultTimes) {
             if(result < 0.0) {
-                responseSum += (double)SOCKET_TIMEOUT;
+                responseSum += (double)ECHO_BLAST_TIME_LIMIT;
             } else {
                 responseSum += (double)result;
             }
         }
-        System.out.println("RESPONSE PERCENT: "+(percentageResponse*100)+"%");
+        System.out.println("RESPONSE PERCENT: ("+this.resultResponses+"/"+NUM_PACKETS+")="+(percentageResponse*100)+"%");
         System.out.println("RESPONSE TIME AVG: "+(responseSum/(double)NUM_PACKETS)+" millis");
     }
 
-    private void interrupt() {
+    @Override
+    public void interrupt(){
         System.out.println("> interrupt()");
-        this.producerThread.interrupt();
-        this.consumerThread.interrupt();
-        this.producerFinished = true;
-        this.consumerFinished = true;
-    }
-    
-    private void join() {
-        System.out.println("> join");
         try {
-            System.out.println("this.producerThread.join");
-            this.producerThread.join();
-            System.out.println("this.consumerThread.join");
-            this.consumerThread.join();
+            super.interrupt();
+            this.dsock.close();
+            System.out.println("> producerThread.join()");
+            if(this.producerThread != null) {
+                this.producerThread.join();
+            }
+            System.out.println("> consumererThread.join()");
+            if(this.consumerThread != null) {
+                this.consumerThread.join();
+            }
         } catch(java.lang.InterruptedException e) {
             System.out.println("caught java.lang.InterruptedException");
         }
-        System.out.println("< join");
+        System.out.println("< interrupt()");
     }
 
-    private void run() {
+    public void run() {
+        System.out.println("> run()");
+        Date startTime = new Date();
+        Date currentTime = startTime;
+        long elapsed = 0;
         try {
-            DatagramSocket dsock = new DatagramSocket();
-            //dsock.setSoTimeout(SOCKET_TIMEOUT);
-            Consumer consumerTask = new Consumer(dsock, this);
-            Producer producerTask = new Producer(dsock, this);
+            this.dsock = new DatagramSocket();
+            Consumer consumerTask = new Consumer(this.dsock, this);
+            Producer producerTask = new Producer(this.dsock, this);
             this.consumerThread = new Thread(consumerTask);
             this.producerThread = new Thread(producerTask);
             this.consumerThread.start();
             this.producerThread.start();
-            //this.consumerThread.join();
-            //this.producerThread.join();
+            
+            //busy wait
+            while(!finished()) {
+                currentTime = new Date();
+                elapsed = currentTime.getTime() - startTime.getTime();
+                if(elapsed > ECHO_BLAST_TIME_LIMIT) {
+                    interrupt();
+                }
+            }
         } catch (java.net.SocketException e) {
             System.out.println("caught java.net.SocketException");
         }
+        collate();
+        System.out.println("ELAPSED TIME: "+elapsed+" millis");
+        System.out.println("< run()");
     }
 
     public static void main( String args[] ) throws Exception {
         System.out.println("> main");
         EchoBlast eb = new EchoBlast();
-        eb.run();
-        //Thread.sleep(1);
-        TimeUnit.MILLISECONDS.sleep(SOCKET_TIMEOUT);
-        while(!eb.finished()) {
-            eb.interrupt();
-            //eb.join();
-        }
-        eb.collate();
+        eb.start();
         System.out.println("< main");
     }
 }
