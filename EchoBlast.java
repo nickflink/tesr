@@ -19,6 +19,7 @@ public class EchoBlast extends Thread {
     private long [] resultTimes = new long[NUM_PACKETS];
     class Producer implements Runnable {
         private static final String INET_ADDR = "127.0.0.1";
+        //private static final String INET_ADDR = "95.131.168.73";
         private DatagramSocket dsock = null;
         private EchoBlast callback = null;
         public Producer(DatagramSocket dsock, EchoBlast callback) {

@@ -57,11 +57,11 @@ int passes_filters(char *ip, tesr_filter_t *filters) {
             // Ete regular expression
             reti = regexec(&regex, ip, 0, NULL, 0);
             if( !reti ) {
-                LOG_DEBUG("[KO] Filtered Out By %s!", element->filter);
+                LOG_DEBUG("[KO] Filtered Out By %s!\n", element->filter);
                 ret = 0;
                 break;
             } else if( reti == REG_NOMATCH ) {
-                LOG_DEBUG("[OK] Passed Filter %s", element->filter);
+                LOG_DEBUG("[OK] Passed Filter %s\n", element->filter);
                 ret = 1;
             } else {
                 char msgbuf[100];

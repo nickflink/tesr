@@ -8,6 +8,10 @@ OBJ_DIR = ./obj
 CC_FLAGS = -Wall -Werror
 CC_MACROS = -DLOG_LEVEL=$(LOG_LEVEL)
 CC_LIBS = -lev -lconfig -lpthread
+ifdef LINK_STATIC
+CC_FLAGS += -static
+CC_LIBS += -lm
+endif
 CC_INC = -I$(INC_DIR)
 JC = javac
 

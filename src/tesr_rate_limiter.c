@@ -72,10 +72,10 @@ int is_under_rate_limit(rate_limiter_t *rate_limiter, char *ip) {
         }
         ++rl->count;
         if(rl->count > rate_limiter->ip_rate_limit_max) {
-            LOG_DEBUG("[OK] rl->count=%d > %d=rate_limiter->ip_rate_limit_max\n", rl->count, rate_limiter->ip_rate_limit_max);
+            LOG_DEBUG("[KO] rl->count=%d > %d=rate_limiter->ip_rate_limit_max\n", rl->count, rate_limiter->ip_rate_limit_max);
             ret = 0;
         } else {
-            LOG_DEBUG("[KO] rl->count=%d <= %d=rate_limiter->ip_rate_limit_max\n", rl->count, rate_limiter->ip_rate_limit_max);
+            LOG_DEBUG("[OK] rl->count=%d <= %d=rate_limiter->ip_rate_limit_max\n", rl->count, rate_limiter->ip_rate_limit_max);
         }
         pthread_mutex_unlock(&rate_limiter->lock);     //Don't forget locking
         //pthread_mutex_lock is not reentrant so we will unlock first
