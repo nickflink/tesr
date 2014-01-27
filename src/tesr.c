@@ -27,22 +27,26 @@ tesr_config_t tesr_config;
 
 static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     int th = next_thread_idx;
-    if(++next_thread_idx >= tesr_config.num_worker_threads) {
-        next_thread_idx = 0;
-    }
     worker_data_t *data = ((worker_data_t *)malloc(sizeof(worker_data_t)));
     data->addr_len = sizeof(struct sockaddr_in);
     data->bytes = recvfrom(main_thread.sd, data->buffer, sizeof(data->buffer) - 1, 0, (struct sockaddr*) &data->addr, (socklen_t *) &data->addr_len);
-    pthread_mutex_lock(&worker_threads[th].lock);     //Don't forget locking
-    LL_APPEND(worker_threads[th].queue, data);
-    static int recv_count = 0;
-    ++recv_count;
-    LOG_DEBUG("[OK]<thread = %d recv_count %d\n", (int)pthread_self(), recv_count);
-    size_t len = sizeof(th);
-    if (write(worker_threads[th].outbox_fd, &th, len) != len) {
-        LOG_ERROR("Fail to writing to connection notify pipe");
+    if(tesr_config.num_worker_threads == 0) {
+        sendto(main_thread.sd, data->buffer, data->bytes, 0, (struct sockaddr*) &data->addr, sizeof(data->addr));
+    } else {
+        pthread_mutex_lock(&worker_threads[th].lock);     //Don't forget locking
+        LL_APPEND(worker_threads[th].queue, data);
+        static int recv_count = 0;
+        ++recv_count;
+        LOG_DEBUG("[OK]<thread = %d recv_count %d\n", (int)pthread_self(), recv_count);
+        size_t len = sizeof(th);
+        if (write(worker_threads[th].outbox_fd, &th, len) != len) {
+            LOG_ERROR("Fail to writing to connection notify pipe\n");
+        }
+        pthread_mutex_unlock(&worker_threads[th].lock);   //Don't forget unlocking
+        if(++next_thread_idx >= tesr_config.num_worker_threads) {
+            next_thread_idx = 0;
+        }
     }
-    pthread_mutex_unlock(&worker_threads[th].lock);   //Don't forget unlocking
 }
 
 int main(int argc, char** argv) {
@@ -51,8 +55,7 @@ int main(int argc, char** argv) {
     init_config(&tesr_config, argc, argv);
     log_config(&tesr_config);
     if(tesr_config.num_worker_threads == 0) {
-        LOG_ERROR("at least one worker is required");
-        return 0;
+        LOG_WARN("at least one worker is recommended filtering and rate limiting will be disabled\n");
     }
     int ret = bind_dgram_socket(&main_thread.sd, &main_thread.addr, tesr_config.recv_port);
     if (ret == 0) {
