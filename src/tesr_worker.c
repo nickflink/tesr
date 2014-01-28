@@ -36,18 +36,15 @@ void* worker_thread_start(void* args) {
     LOG_INFO("[TID] 0x%zx %s\n", (size_t)pthread_self(), __FUNCTION__);
     worker_thread_t *me = (worker_thread_t*)args;
     log_worker(me);
-    int ret = bind_dgram_socket(&me->sd, &me->addr, me->port);
-    if (ret == 0) {
-        LOG_ERROR("could not bind dgram socket");
-    }
     ev_loop(me->event_loop, 0);
     return NULL;
 }
 
 //called on the main thread
-void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, rate_limiter_t *rate_limiter, int port, int idx) {
+void init_worker(worker_thread_t *worker_thread, main_thread_t *main_thread, tesr_config_t *config, rate_limiter_t *rate_limiter, int idx) {
     LOG_LOC;
     worker_thread->idx = idx;
+    worker_thread->main_thread = main_thread;
     worker_thread->filters = NULL;
     tesr_filter_t *filter = NULL;
     tesr_filter_t *cpfilter = NULL;
@@ -60,21 +57,19 @@ void init_worker(worker_thread_t *worker_thread, tesr_config_t *config, rate_lim
     worker_thread->rate_limiter = rate_limiter;
     pthread_mutex_init(&worker_thread->lock, NULL);
     // This loop sits in the pthread
-    worker_thread->port = port;
     int fds[2];
     if(pipe(fds)) {
         LOG_ERROR("Can't create notify pipe");
         return;
     }
-    worker_thread->inbox_fd = fds[0];
-    worker_thread->outbox_fd = fds[1];
+    worker_thread->int_fd = fds[0];
+    worker_thread->ext_fd = fds[1];
     worker_thread->event_loop = ev_loop_new(0);
-    ev_io_init(&worker_thread->inbox_watcher, inbox_cb_w, worker_thread->inbox_fd, EV_READ);
+    ev_io_init(&worker_thread->inbox_watcher, inbox_cb_w, worker_thread->int_fd, EV_READ);
     ev_io_start(worker_thread->event_loop, &worker_thread->inbox_watcher);
 }
 void log_worker(worker_thread_t *worker_thread) {
-    LOG_LOC;
-    LOG_INFO("worker_thread[0x%zx]{port=%d}\n",(size_t)pthread_self(), worker_thread->port);
+    LOG_INFO("worker_thread[%d] => 0x%zx\n",worker_thread->idx, (size_t)pthread_self());
 }
 void destroy_workers() {
     LOG_LOC;
@@ -104,6 +99,27 @@ static int should_echo(char *buffer, socklen_t bytes, struct sockaddr_in *addr, 
     }
     return ret;
 }
+//You should have worker_thread->lock or have num_workers == 0 for this function
+void process_worker_data(worker_data_t *worker_data, main_thread_t *main_thread, tesr_filter_t *filters, rate_limiter_t *rate_limiter, int th) {
+    if(worker_data) {
+        static int send_count = 0;
+        if(should_echo(worker_data->buffer, worker_data->bytes, &worker_data->addr, filters, rate_limiter)) {
+            ++send_count;
+            LOG_DEBUG("[OK]>thread = 0x%zx send_count %d\n", (size_t)pthread_self(), send_count);
+            //sendto(worker_thread->sd, worker_data->buffer, worker_data->bytes, 0, (struct sockaddr*) &worker_data->addr, sizeof(worker_data->addr));
+            pthread_mutex_lock(&main_thread->lock);     //Don't forget locking
+            LL_APPEND(main_thread->queue, worker_data);
+            size_t len = sizeof(th);
+            if (write(main_thread->ext_fd, &th, len) != len) {
+                LOG_ERROR("Fail to writing to connection notify pipe\n");
+            }
+            pthread_mutex_unlock(&main_thread->lock);   //Don't forget unlocking
+        } else {
+            LOG_DEBUG("[KO]Xthread = 0x%zx send_count %d\n", (size_t)pthread_self(), send_count);
+        }
+        LL_DELETE(worker_data, worker_data);
+    }
+}
 
 void inbox_cb_w(EV_P_ ev_io *w, int revents) {
     int idx;
@@ -116,18 +132,7 @@ void inbox_cb_w(EV_P_ ev_io *w, int revents) {
         worker_thread_t *worker_thread = get_worker_thread(idx);
         if(worker_thread) {
             pthread_mutex_lock(&worker_thread->lock);     //Don't forget locking
-            worker_data_t *worker_data = worker_thread->queue;
-            if(worker_data) {
-                static int send_count = 0;
-                if(should_echo(worker_data->buffer, worker_data->bytes, &worker_data->addr, worker_thread->filters, worker_thread->rate_limiter)) {
-                    ++send_count;
-                    LOG_DEBUG("[OK]>thread = %d send_count %d\n", (int)pthread_self(), send_count);
-                    sendto(worker_thread->sd, worker_data->buffer, worker_data->bytes, 0, (struct sockaddr*) &worker_data->addr, sizeof(worker_data->addr));
-                } else {
-                    LOG_DEBUG("[KO]Xthread = %d send_count %d\n", (int)pthread_self(), send_count);
-                }
-                LL_DELETE(worker_thread->queue,worker_data);
-            }
+            process_worker_data(worker_thread->queue, worker_thread->main_thread, worker_thread->filters, worker_thread->rate_limiter, idx);
             pthread_mutex_unlock(&worker_thread->lock);   //Don't forget unlocking
         }
     }
