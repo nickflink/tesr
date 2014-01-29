@@ -14,12 +14,53 @@
 //worker_thread_t *me = NULL;
 static worker_thread_t *worker_threads = NULL;
 static int num_threads = 0;
+
 static worker_thread_t *get_worker_thread(int idx) {
     worker_thread_t *worker_thread = NULL;
     if(worker_threads && 0 <= idx && idx < num_threads) {
         worker_thread = &worker_threads[idx];
     }
     return worker_thread;
+}
+
+//static void sigint_cb(struct ev_loop *loop, struct ev_signal *w, int revents) {
+//  LOG_DEBUG("{%s} caught signal!\n", get_thread_string());
+//  //ev_unloop(loop, EVUNLOOP_ALL);
+//  ev_unloop(loop, EVUNLOOP_ONE);
+//}
+
+void inbox_cb_w(EV_P_ ev_io *w, int revents) {
+    LOG_LOC;
+    int idx;
+    size_t len = sizeof(int);
+    LOG_DEBUG("{%s} RECVING NOTIFY MainThread => WorkThread[?]\n", get_thread_string());
+    int ret = read(w->fd, &idx, len);
+    if (ret != len) {
+        LOG_ERROR("Can't read from connection notify pipe\n");
+        LOG_INFO("[KO] ret = %d != %d len\n", ret, (int)len);
+    } if(idx < 0) {
+        //ev_unloop(EV_A_, EVUNLOOP_ALL);
+        LOG_DEBUG("{%s} RECVING KILL_PILL MainThread => WorkThread[?]\n", get_thread_string());
+        ev_unloop(EV_A_ EVUNLOOP_ALL);
+    } else {
+        worker_thread_t *worker_thread = get_worker_thread(idx);
+        if(worker_thread) {
+            queue_data_t *data = tesr_dequeue(worker_thread->queue, get_thread_string());
+            if(data) {
+                if(should_echo(data->buffer, data->bytes, &data->addr, worker_thread->filters, worker_thread->rate_limiter)) {
+                    size_t len = sizeof(data->worker_idx);
+                    LOG_DEBUG("[OK]>thread = 0x%zx should_echo\n", (size_t)pthread_self());
+                    tesr_enqueue(worker_thread->main_thread->queue, data, get_thread_string());
+                    LOG_DEBUG("{%s} SENDING NOTIFY WorkThread[%d] => MainThread\n", get_thread_string(), idx);
+                    if (write(worker_thread->main_thread->ext_fd, &data->worker_idx, len) != len) {
+                        LOG_ERROR("Fail to writing to connection notify pipe\n");
+                    }
+                } else {
+                    LOG_DEBUG("[KO]Xthread = 0x%zx should_NOT_echo\n", (size_t)pthread_self());
+                }
+            }
+        }
+    }
 }
 
 worker_thread_t *create_workers(int num) {
@@ -62,6 +103,8 @@ void init_worker(worker_thread_t *thiz, main_thread_t *main_thread, tesr_config_
     thiz->event_loop = ev_loop_new(0);
     ev_io_init(&thiz->inbox_watcher, inbox_cb_w, thiz->int_fd, EV_READ);
     ev_io_start(thiz->event_loop, &thiz->inbox_watcher);
+    //ev_signal_init(&thiz->signal_watcher, sigint_cb, SIGINT);
+    //ev_signal_start(thiz->event_loop, &thiz->signal_watcher);
 }
 void log_worker(worker_thread_t *worker_thread) {
     LOG_INFO("worker_thread[%d] => 0x%zx\n",worker_thread->idx, (size_t)pthread_self());
@@ -76,45 +119,6 @@ void destroy_workers() {
         LOG_ERROR("no workers to destroy");
     }
 }
-
-
-void inbox_cb_w(EV_P_ ev_io *w, int revents) {
-    LOG_LOC;
-    int idx;
-    size_t len = sizeof(int);
-    LOG_DEBUG("{%s} RECVING NOTIFY MainThread => WorkThread[?]\n", get_thread_string());
-    int ret = read(w->fd, &idx, len);
-    if (ret != len) {
-        LOG_ERROR("Can't read from connection notify pipe\n");
-        LOG_INFO("[KO] ret = %d != %d len\n", ret, (int)len);
-    } else {
-        worker_thread_t *worker_thread = get_worker_thread(idx);
-        if(worker_thread) {
-            queue_data_t *data = tesr_dequeue(worker_thread->queue, get_thread_string());
-            if(data) {
-                if(should_echo(data->buffer, data->bytes, &data->addr, worker_thread->filters, worker_thread->rate_limiter)) {
-                    size_t len = sizeof(data->worker_idx);
-                    LOG_DEBUG("[OK]>thread = 0x%zx should_echo\n", (size_t)pthread_self());
-                    tesr_enqueue(worker_thread->main_thread->queue, data, get_thread_string());
-                    LOG_DEBUG("{%s} SENDING NOTIFY WorkThread[%d] => MainThread\n", get_thread_string(), idx);
-                    if (write(worker_thread->main_thread->ext_fd, &data->worker_idx, len) != len) {
-                        LOG_ERROR("Fail to writing to connection notify pipe\n");
-                    }
-                } else {
-                    LOG_DEBUG("[KO]Xthread = 0x%zx should_NOT_echo\n", (size_t)pthread_self());
-                }
-            }
-
-
-
-            //work_on_queue(worker_thread->queue, worker_thread->main_thread->queue, worker_thread->filters, worker_thread->rate_limiter);
-            //pthread_mutex_lock(&worker_thread->lock);     //Don't forget locking
-            //process_worker_data(worker_thread->queue, worker_thread->main_thread, worker_thread->filters, worker_thread->rate_limiter, idx);
-            //pthread_mutex_unlock(&worker_thread->lock);   //Don't forget unlocking
-        }
-    }
-}
-
 
 const char * get_thread_string() {
     int idx = 0;

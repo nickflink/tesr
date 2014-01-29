@@ -62,6 +62,8 @@ typedef struct main_thread_t {
     struct ev_loop* event_loop;
     struct ev_io udp_read_watcher;
     struct ev_io inbox_watcher;
+    struct ev_signal sigint_watcher;
+    struct ev_signal sigchld_watcher;
     tesr_queue_t *queue;
     rate_limiter_t *rate_limiter;
 } main_thread_t;
@@ -73,6 +75,7 @@ typedef struct worker_thread_t {
     struct sockaddr_in addr;
     struct ev_loop* event_loop;
     struct ev_io inbox_watcher;
+    //struct ev_signal signal_watcher;
     ev_async async_watcher;
     pthread_t thread;
     tesr_queue_t *queue;

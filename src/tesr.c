@@ -22,6 +22,28 @@ int next_thread_idx = 0;
 worker_thread_t *worker_threads;
 tesr_config_t tesr_config;
 
+static void sigint_cb (struct ev_loop *loop, struct ev_signal *w, int revents) {
+  LOG_DEBUG("caught SIGINT!\n");
+  int kill_pill = -1;
+  size_t len = sizeof(kill_pill);
+  ev_io_stop(main_thread.event_loop, &main_thread.udp_read_watcher);
+  for(int th = 0; th < tesr_config.num_workers; th++) {
+      if (write(worker_threads[th].ext_fd, &kill_pill, len) != len) {
+          LOG_ERROR("Fail to writing to connection notify pipe\n");
+      }
+      pthread_join(worker_threads[th].thread, NULL);
+      LOG_ERROR("{%s} JOINED\n", get_thread_string());
+  }
+  //ev_unloop(main_thread.event_loop, EVUNLOOP_ONE);
+  ev_unloop(main_thread.event_loop, EVUNLOOP_ALL);
+}
+
+static void sigchld_cb (struct ev_loop *loop, struct ev_signal *w, int revents) {
+  LOG_DEBUG("caught SIGCHLD!\n");
+  //ev_unloop(main_thread.event_loop, EVUNLOOP_ONE);
+  //ev_unloop(main_thread.event_loop, EVUNLOOP_ALL);
+}
+
 static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     int th = next_thread_idx;
     queue_data_t *data = create_queue_data();//TODO(nick): is this ever destroyed
@@ -106,15 +128,12 @@ int main(int argc, char** argv) {
     ev_io_start(main_thread.event_loop, &main_thread.udp_read_watcher);
     ev_io_init(&main_thread.inbox_watcher, udp_write_cb, main_thread.int_fd, EV_READ);
     ev_io_start(main_thread.event_loop, &main_thread.inbox_watcher);
-
+    ev_signal_init(&main_thread.sigint_watcher, sigint_cb, SIGINT);
+    ev_signal_start(main_thread.event_loop, &main_thread.sigint_watcher);
+    ev_signal_init(&main_thread.sigchld_watcher, sigchld_cb, SIGCHLD);
+    ev_signal_start(main_thread.event_loop, &main_thread.sigchld_watcher);
     // now wait for events to arrive
     ev_loop(main_thread.event_loop, 0);
-    //Wait on threads for execution
-    for(th = 0; th < tesr_config.num_workers; th++) {
-        pthread_join(worker_threads[th].thread, NULL);
-        //MEMORY CHECKING
-        pthread_mutex_destroy(&worker_threads[th].queue->mutex);
-        pthread_cond_destroy(&worker_threads[th].queue->cond);
-    }
+    LOG_DEBUG("That's all folks!\n");
     return 0;
 }
