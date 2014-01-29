@@ -18,8 +18,11 @@ JC = javac
 OBJS = $(OBJ_DIR)/tesr.o \
        $(OBJ_DIR)/tesr_config.o \
        $(OBJ_DIR)/tesr_common.o \
+       $(OBJ_DIR)/tesr_queue.o \
        $(OBJ_DIR)/tesr_rate_limiter.o \
        $(OBJ_DIR)/tesr_worker.o \
+
+INCS = $(wildcard include/*.h)
 
 .SUFFIXES: .java .class
 
@@ -33,7 +36,7 @@ clean:
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	$(CC) -c -o $@ $< $(CC_FLAGS) $(CC_MACROS) $(CC_INC)
 
-$(BIN_DIR)/tesr : $(OBJS)
+$(BIN_DIR)/tesr : $(OBJS) $(INCS)
 	$(CC) -o $@ $^ $(CC_FLAGS) $(CC_MACROS) $(CC_LIBS) $(CC_INC)
 
 .java.class:

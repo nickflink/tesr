@@ -4,6 +4,8 @@
 #include <ev.h>
 #include <pthread.h>
 #include <tesr_logging.h> //needed for logging macros
+#include <utlist.h>
+#include <uthash.h>
 
 #define BUFFER_LEN 1024
 
@@ -36,39 +38,42 @@ typedef struct rate_limiter_t {
     int ip_rate_limit_prune_mark;
 } rate_limiter_t;
 
-typedef struct worker_data_t {
+typedef struct queue_data_t {
     char buffer[BUFFER_LEN];
     struct sockaddr_in addr;
     socklen_t bytes;
     int addr_len;
-    struct worker_data_t *next;
-} worker_data_t;
+    int worker_idx;
+    struct queue_data_t *next;
+} queue_data_t;
+
+typedef struct tesr_queue_t {
+    queue_data_t *queue;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    int int_fd;
+    int ext_fd;
+    struct queue_data_t *next;
+} tesr_queue_t;
 
 typedef struct main_thread_t {
     int sd;
     struct sockaddr_in addr;
-    int int_fd;
-    int ext_fd;
     struct ev_loop* event_loop;
     struct ev_io udp_read_watcher;
     struct ev_io inbox_watcher;
-    worker_data_t *queue;
-    pthread_mutex_t lock;
+    tesr_queue_t *queue;
     rate_limiter_t *rate_limiter;
 } main_thread_t;
-main_thread_t main_thread;
 
 typedef struct worker_thread_t {
     int idx;
     struct sockaddr_in addr;
-    int int_fd;
-    int ext_fd;
-    pthread_t thread;
     struct ev_loop* event_loop;
     struct ev_io inbox_watcher;
     ev_async async_watcher;
-    worker_data_t *queue;
-    pthread_mutex_t lock;
+    pthread_t thread;
+    tesr_queue_t *queue;
     tesr_filter_t *filters;
     rate_limiter_t *rate_limiter;
     main_thread_t *main_thread;

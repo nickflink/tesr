@@ -33,7 +33,9 @@ void destroy_rate_limiter(rate_limiter_t *rate_limiter) {
 
 int prune_expired_ips(rate_limiter_t *rate_limiter) {
     int pruned = 0;
+    LOG_DEBUG("LOCK prune_expired_ips thread = 0x%zx\n", (size_t)pthread_self());
     pthread_mutex_lock(&rate_limiter->lock);     //Don't forget locking
+    LOG_DEBUG("LOCK AQUIRED prune_expired_ips thread = 0x%zx\n", (size_t)pthread_self());
     if(rate_limiter && HASH_COUNT(rate_limiter->rate_limit_map) >= rate_limiter->ip_rate_limit_prune_mark) {
         rate_limit_struct_t *rl = NULL;
         rate_limit_struct_t *tmp = NULL;
@@ -52,14 +54,18 @@ int prune_expired_ips(rate_limiter_t *rate_limiter) {
         }
         LOG_DEBUG("prunning triggered %d object(s) pruned\n", pruned);
     }
+    LOG_DEBUG("UNLOCK prune_expired_ips thread = 0x%zx\n", (size_t)pthread_self());
     pthread_mutex_unlock(&rate_limiter->lock);     //Don't forget locking
+    LOG_DEBUG("UNLOCK RELEASED prune_expired_ips thread = 0x%zx\n", (size_t)pthread_self());
     return pruned;
 }
 
 int is_under_rate_limit(rate_limiter_t *rate_limiter, char *ip) {
     int ret = 1;
     if(0 < rate_limiter->ip_rate_limit_max) {
+      LOG_DEBUG("LOCK is_under_rate_limit thread = 0x%zx\n", (size_t)pthread_self());
         pthread_mutex_lock(&rate_limiter->lock);     //Don't forget locking
+        LOG_DEBUG("LOCK AQUIRED is_under_rate_limit thread = 0x%zx\n", (size_t)pthread_self());
         //ADD RATE LIMIT
         rate_limit_struct_t *rl = NULL;
         HASH_FIND_STR( rate_limiter->rate_limit_map, ip, rl );
@@ -77,7 +83,9 @@ int is_under_rate_limit(rate_limiter_t *rate_limiter, char *ip) {
         } else {
             LOG_DEBUG("[OK] rl->count=%d <= %d=rate_limiter->ip_rate_limit_max\n", rl->count, rate_limiter->ip_rate_limit_max);
         }
+        LOG_DEBUG("UNLOCK is_under_rate_limit thread = 0x%zx\n", (size_t)pthread_self());
         pthread_mutex_unlock(&rate_limiter->lock);     //Don't forget locking
+        LOG_DEBUG("UNLOCK RELEASED is_under_rate_limit thread = 0x%zx\n", (size_t)pthread_self());
         //pthread_mutex_lock is not reentrant so we will unlock first
         //an easy improvement would be to pass whether we have the lock and only lock if we don't.  For complexities sake we will skip this for now
         prune_expired_ips(rate_limiter);

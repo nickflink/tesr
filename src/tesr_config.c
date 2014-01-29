@@ -1,5 +1,3 @@
-// Source: http://www.mail-archive.com/libev@lists.schmorp.de/msg00987.html
-
 #include "tesr_config.h"
 #include <getopt.h>
 #include <libconfig.h>
@@ -13,6 +11,7 @@
 #define CONFIG_ERR_INVALID_CMD_LINE_OPTION 2
 #define CONFIG_ERR_UNHANDLED_CMD_LINE_OPTION 3
 #define CONFIG_ERR_UNPARSED_CMD_LINE_OPTION 4
+#define CONFIG_ERR_HELP_REQUESTED 5
 
 void log_config(tesr_config_t *tesr_config) {
     LOG_INFO("tesr_config->recv_port=%d\n", tesr_config->recv_port);
@@ -138,13 +137,17 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
         int option_index = 0;
         static struct option long_options[] = {
             {"port",    required_argument, 0, 'p'},
-            {"workers",    required_argument, 0, 'w'},
+            {"workers", required_argument, 0, 'w'},
+            {"help",    no_argument, 0, 'h'},
             {0,         0,                 0,  0 }
         };
         c = getopt_long(argc, argv, "p:w:", long_options, &option_index);
         if (c == -1)
             break;
         switch (c) {
+        case 'h':
+            config_err = CONFIG_ERR_HELP_REQUESTED;
+            break;
         case 'p':
             recv_port_arg = atoi(optarg);
             if(recv_port_arg == 0) {
@@ -183,6 +186,11 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
     }
     if(config_err) {
         //We can exit like this when checking the config as it is only checked in the beginning
+        LOG_ERROR("\
+\nUSAGE tesr [T]hreaded [E]cho [S]erve[R]\
+\n-p --port (override the port)\
+\n-w --workers (override the number of workers)\
+\n");
         exit(config_err);
     }
 }
