@@ -82,6 +82,7 @@ void inbox_cb_w(EV_P_ ev_io *w, int revents) {
     LOG_WARN("inbox_cb_w\n");
     int idx;
     size_t len = sizeof(int);
+    LOG_DEBUG("{%s} RECVING NOTIFY MainThread => WorkThread[?]\n", get_thread_string());
     int ret = read(w->fd, &idx, len);
     if (ret != len) {
         LOG_ERROR("Can't read from connection notify pipe\n");
@@ -95,7 +96,7 @@ void inbox_cb_w(EV_P_ ev_io *w, int revents) {
                     size_t len = sizeof(data->worker_idx);
                     LOG_DEBUG("[OK]>thread = 0x%zx should_echo\n", (size_t)pthread_self());
                     tesr_enqueue(worker_thread->main_thread->queue, data);
-                    LOG_DEBUG("starting blocking write on thread = 0x%zx\n", (size_t)pthread_self());
+                    LOG_DEBUG("{%s} SENDING NOTIFY WorkThread[%d] => MainThread\n", get_thread_string(), idx);
                     if (write(worker_thread->main_thread->ext_fd, &data->worker_idx, len) != len) {
                         LOG_ERROR("Fail to writing to connection notify pipe\n");
                     }
@@ -112,5 +113,31 @@ void inbox_cb_w(EV_P_ ev_io *w, int revents) {
             //pthread_mutex_unlock(&worker_thread->lock);   //Don't forget unlocking
         }
     }
+}
+
+
+const char * get_thread_string() {
+    int idx = 0;
+    worker_thread_t *worker_thread = get_worker_thread(idx);
+    while(worker_thread != NULL) {
+        if(pthread_equal(pthread_self(), worker_thread->thread)) {
+            switch(idx) {
+                case 0:
+                  return "_work0";
+                case 1:
+                  return "_work1";
+                case 2:
+                  return "_work2";
+                case 3:
+                  return "_work3";
+                default:
+                  return "_work?";
+                break;
+            }
+        }
+        ++idx;
+        worker_thread = get_worker_thread(idx);
+    }
+    return "_main_";
 }
 

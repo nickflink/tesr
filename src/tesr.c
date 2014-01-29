@@ -33,13 +33,14 @@ static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     if(tesr_config.num_workers == 0) {
         if(should_echo(data->buffer, data->bytes, &data->addr, tesr_config.filters, main_thread.rate_limiter)) {
             tesr_enqueue(main_thread.queue, data);
+            LOG_DEBUG("{%s} SENDING NOTIFY MainThread => MainThread\n", get_thread_string());
             if (write(main_thread.ext_fd, &data->worker_idx, len) != len) {
                 LOG_ERROR("Fail to writing to connection notify pipe\n");
             }
         }
     } else {
         tesr_enqueue(worker_threads[th].queue, data);
-        LOG_DEBUG("starting blocking write on thread = 0x%zx\n", (size_t)pthread_self());
+        LOG_DEBUG("{%s} SENDING NOTIFY MainThread => WorkThread[%d]\n", get_thread_string(), th);
         if (write(worker_threads[th].ext_fd, &data->worker_idx, len) != len) {
             LOG_ERROR("Fail to writing to connection notify pipe\n");
         }
@@ -54,6 +55,7 @@ static void udp_write_cb(EV_P_ ev_io *w, int revents) {
     LOG_WARN("udp_write_cb\n");
     int idx;
     size_t len = sizeof(int);
+    LOG_DEBUG("{%s} RECVING NOTIFY WorkThread[?] => MainThread\n", get_thread_string());
     int ret = read(w->fd, &idx, len);
     if (ret != len) {
         LOG_ERROR("Can't read from connection notify pipe\n");

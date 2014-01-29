@@ -30,6 +30,8 @@ CLASSES = EchoBlast.java
 
 all: bin/tesr $(CLASSES:.java=.class)
 
+EchoBlast: $(CLASSES:.java=.class)
+
 clean:
 	$(RM) $(OBJ_DIR)/* $(BIN_DIR)/* *.class
 

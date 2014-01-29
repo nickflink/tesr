@@ -36,57 +36,44 @@ void log_queue(tesr_queue_t *thiz) {
     LOG_INFO("]\n");
 }
 
-static int tesr_trylock(pthread_mutex_t *mutex, pthread_cond_t *cond) {
+static int tesr_lock(pthread_mutex_t *mutex, pthread_cond_t *cond) {
     int lock_error = pthread_mutex_trylock(mutex);     //Don't forget locking
-    LOG_DEBUG("[0x%zx] REQUESTED by thread = 0x%zx\n", (size_t)mutex, (size_t)pthread_self());
-    if(lock_error == 0) {
-        LOG_DEBUG("[0x%zx] AQUIRED by thread = 0x%zx\n", (size_t)mutex, (size_t)pthread_self());
-    } else {
-        log_lock_error(lock_error);
+    //LOG_DEBUG("[0x%zx] REQUESTED by thread = 0x%zx\n", (size_t)mutex, (size_t)pthread_self());
+    while(lock_error != 0) {
+        LOG_DEBUG("[0x%zx] FAILURE (%s) by thread = 0x%zx\n", (size_t)mutex, get_lock_error_string(lock_error), (size_t)pthread_self());
         pthread_cond_wait(cond, mutex);
+        lock_error = pthread_mutex_trylock(mutex);     //Don't forget locking
     }
+    //LOG_DEBUG("[0x%zx] AQUIRED by thread = 0x%zx\n", (size_t)mutex, (size_t)pthread_self());
     return lock_error;
 }
 
 static int tesr_unlock(pthread_mutex_t *mutex, pthread_cond_t *cond) {
-    LOG_DEBUG("[0x%zx] PENDING by thread = 0x%zx\n", (size_t)mutex, (size_t)pthread_self());
+    //LOG_DEBUG("[0x%zx] PENDING by thread = 0x%zx\n", (size_t)mutex, (size_t)pthread_self());
     int lock_error = pthread_mutex_unlock(mutex);   //Don't forget unlocking
     if(lock_error == 0) {
         pthread_cond_broadcast(cond);
-        LOG_DEBUG("[0x%zx] RELEASED by thread = 0x%zx\n", (size_t)mutex, (size_t)pthread_self());
+        //LOG_DEBUG("[0x%zx] RELEASED by thread = 0x%zx\n", (size_t)mutex, (size_t)pthread_self());
     } else {
-        log_lock_error(lock_error);
+        LOG_DEBUG("[0x%zx] FAILURE (%s) by thread = 0x%zx\n", (size_t)mutex, get_lock_error_string(lock_error), (size_t)pthread_self());
     }
     return lock_error;
 }
 
 void tesr_enqueue(tesr_queue_t *thiz, queue_data_t *data) {
     LOG_DEBUG("tesr_enqueue thread = 0x%zx\n", (size_t)pthread_self());
-    while(tesr_trylock(&thiz->mutex, &thiz->cond) != 0);   //Don't forget unlocking
+    tesr_lock(&thiz->mutex, &thiz->cond);  //Don't forget unlocking
     LL_APPEND(thiz->queue, data);
     tesr_unlock(&thiz->mutex, &thiz->cond);   //Don't forget unlocking
-    //size_t len = sizeof(data->worker_idx);
-    //LOG_DEBUG("starting blocking write on thread = 0x%zx\n", (size_t)pthread_self());
-    //if (write(thiz->ext_fd, &data->worker_idx, len) != len) {
-    //    LOG_ERROR("Fail to writing to connection notify pipe\n");
-    //}
 }
 
 queue_data_t *tesr_dequeue(tesr_queue_t *thiz) {
     LOG_DEBUG("tesr_dequeue thread = 0x%zx\n", (size_t)pthread_self());
     queue_data_t *data = NULL;
-    //int worker_idx = 0;
-    //size_t len = sizeof(int);
-    LOG_DEBUG("starting blocking read on thread = 0x%zx\n", (size_t)pthread_self());
-    while(tesr_trylock(&thiz->mutex, &thiz->cond) != 0);   //Don't forget unlocking
-    //int ret = read(thiz->int_fd, &worker_idx, len);
-    //if (ret != len) {
-    //    LOG_ERROR("Can't read from connection notify pipe\n");
-    //    LOG_INFO("[KO] ret = %d != %d len\n", ret, (int)len);
-    //} else {
-        data = thiz->queue;
-        LL_DELETE(thiz->queue, data);
-    //}
+    //LOG_DEBUG("starting blocking read on thread = 0x%zx\n", (size_t)pthread_self());
+    tesr_lock(&thiz->mutex, &thiz->cond);  //Don't forget unlocking
+    data = thiz->queue;
+    LL_DELETE(thiz->queue, data);
     tesr_unlock(&thiz->mutex, &thiz->cond);   //Don't forget unlocking
     return data;
 }

@@ -97,28 +97,28 @@ int should_echo(char *buffer, socklen_t bytes, struct sockaddr_in *addr, tesr_fi
     return ret;
 }
 
-void log_lock_error(int lock_error) {
+const char *get_lock_error_string(int lock_error) {
     switch(lock_error) {
         case EINVAL:
-            LOG_DEBUG("The mutex was created with the protocol attribute having the value PTHREAD_PRIO_PROTECT and the calling thread's priority is higher than the mutex's current priority ceiling.\n");
-            LOG_DEBUG("-- OR --\n");
-            LOG_DEBUG("The value specified by mutex does not refer to an initialized mutex object.\n");
+            return "The mutex was created with the protocol attribute having the value PTHREAD_PRIO_PROTECT and the calling thread's priority is higher than the mutex's current priority ceiling.\n-- OR --\nThe value specified by mutex does not refer to an initialized mutex object.";
         case EBUSY:
-            LOG_DEBUG("The mutex could not be acquired because it was already locked.\n");
+            return "The mutex could not be acquired because it was already locked.";
         break;
         case EAGAIN:
-            LOG_DEBUG("The mutex could not be acquired because the maximum number of recursive locks for mutex has been exceeded.");
+            return "The mutex could not be acquired because the maximum number of recursive locks for mutex has been exceeded.";
         break;
         case EDEADLK:
-            LOG_DEBUG("A deadlock condition was detected or the current thread already owns the mutex.");
+            return "A deadlock condition was detected or the current thread already owns the mutex.";
         break;
         case EPERM:
-            LOG_DEBUG("The current thread does not own the mutex.");
+            return "The current thread does not own the mutex.";
         break;
+        case 0:
+            return "Success";
         default:
-            LOG_DEBUG("UNKNOWN lock failure state.");
         break;
     }
+    return "UNKNOWN lock failure state.";
 }
 
 int connect_pipe(int *int_fd, int *ext_fd) {

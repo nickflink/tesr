@@ -13,4 +13,5 @@ void init_worker(worker_thread_t *thiz, main_thread_t *main_thread, tesr_config_
 void log_worker(worker_thread_t *thiz);
 void destroy_workers();
 void inbox_cb_w(EV_P_ ev_io *w, int revents);
+const char *get_thread_string();
 #endif //TESR_WORKER_H

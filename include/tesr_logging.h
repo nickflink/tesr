@@ -12,6 +12,18 @@
 #error "please set LOG_LEVEL"
 #define LOG_LEVEL 3
 #endif
+#define USE_LOG_PREFIX 0
+#if USE_LOG_PREFIX
+#define DEBUG_PREFIX "DEBUG:"
+#define INFO_PREFIX "INFO:"
+#define WARN_PREFIX "WARN:"
+#define ERROR_PREFIX "ERROR:"
+#else //!USE_LOG_PREFIX
+#define DEBUG_PREFIX ""
+#define INFO_PREFIX ""
+#define WARN_PREFIX ""
+#define ERROR_PREFIX ""
+#endif //USE_LOG_PREFIX
 
 //VERBOSE_LEVEL
 #if LOG_LEVEL >= VERBOSE_LEVEL
@@ -23,28 +35,28 @@
 
 //DEBUG_LEVEL
 #if LOG_LEVEL >= DEBUG_LEVEL
-#define LOG_DEBUG(format,...) do{printf("DEBUG:");printf(format,##__VA_ARGS__);}while(0)
+#define LOG_DEBUG(format,...) do{printf(DEBUG_PREFIX);printf(format,##__VA_ARGS__);}while(0)
 #else //!LOG_LEVEL >= DEBUG_LEVEL
 #define LOG_DEBUG(...) do{}while(0)
 #endif //LOG_LEVEL >= DEBUG_LEVEL
 
 //INFO_LEVEL
 #if LOG_LEVEL >= INFO_LEVEL
-#define LOG_INFO(format,...) do{printf("INFO:"format,##__VA_ARGS__);}while(0)
+#define LOG_INFO(format,...) do{printf(INFO_PREFIX);printf(format,##__VA_ARGS__);}while(0)
 #else //!LOG_LEVEL >= INFO_LEVEL
 #define LOG_INFO(...) do{}while(0)
 #endif //LOG_LEVEL >= INFO_LEVEL
 
 //WARN_LEVEL
 #if LOG_LEVEL >= WARN_LEVEL
-#define LOG_WARN(format,...) do{printf("WARN:"format,##__VA_ARGS__);}while(0)
+#define LOG_WARN(format,...) do{printf(WARN_PREFIX);printf(format,##__VA_ARGS__);}while(0)
 #else //!LOG_LEVEL >= WARN_LEVEL
 #define LOG_WARN(...) do{}while(0)
 #endif //LOG_LEVEL >= WARN_LEVEL
 
 //ERROR_LEVEL
 #if LOG_LEVEL >= ERROR_LEVEL
-#define LOG_ERROR(format,...) do{fprintf(stderr,"ERROR:"format,##__VA_ARGS__);}while(0)
+#define LOG_ERROR(format,...) do{fprintf(stderr,ERROR_PREFIX);fprintf(stderr,format,##__VA_ARGS__);}while(0)
 #else //!LOG_LEVEL >= ERROR_LEVEL
 #define LOG_ERROR(...) do{}while(0)
 #endif //LOG_LEVEL >= ERROR_LEVEL
