@@ -28,13 +28,21 @@ static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     //worker_data_t *data = ((worker_data_t *)malloc(sizeof(worker_data_t)));
     data->addr_len = sizeof(struct sockaddr_in);
     data->bytes = recvfrom(main_thread.sd, data->buffer, sizeof(data->buffer) - 1, 0, (struct sockaddr*) &data->addr, (socklen_t *) &data->addr_len);
+    data->worker_idx = th;
+    size_t len = sizeof(data->worker_idx);
     if(tesr_config.num_workers == 0) {
-        //sendto(main_thread.sd, data->buffer, data->bytes, 0, (struct sockaddr*) &data->addr, sizeof(data->addr));
-        work_on_queue(main_thread.queue, main_thread.queue, tesr_config.filters, main_thread.rate_limiter);
+        if(should_echo(data->buffer, data->bytes, &data->addr, tesr_config.filters, main_thread.rate_limiter)) {
+            tesr_enqueue(main_thread.queue, data);
+            if (write(main_thread.ext_fd, &data->worker_idx, len) != len) {
+                LOG_ERROR("Fail to writing to connection notify pipe\n");
+            }
+        }
     } else {
-        data->worker_idx = th;
-LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
         tesr_enqueue(worker_threads[th].queue, data);
+        LOG_DEBUG("starting blocking write on thread = 0x%zx\n", (size_t)pthread_self());
+        if (write(worker_threads[th].ext_fd, &data->worker_idx, len) != len) {
+            LOG_ERROR("Fail to writing to connection notify pipe\n");
+        }
 LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
         if(++next_thread_idx >= tesr_config.num_workers) {
             next_thread_idx = 0;
@@ -44,10 +52,18 @@ LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (
 
 static void udp_write_cb(EV_P_ ev_io *w, int revents) {
     LOG_WARN("udp_write_cb\n");
-LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
-    queue_data_t *data = tesr_dequeue(main_thread.queue);
-LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
-    sendto(main_thread.sd, data->buffer, data->bytes, 0, (struct sockaddr*) &data->addr, sizeof(data->addr));
+    int idx;
+    size_t len = sizeof(int);
+    int ret = read(w->fd, &idx, len);
+    if (ret != len) {
+        LOG_ERROR("Can't read from connection notify pipe\n");
+        LOG_INFO("[KO] ret = %d != %d len\n", ret, (int)len);
+    } else {
+        LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
+        queue_data_t *data = tesr_dequeue(main_thread.queue);
+        LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
+        sendto(main_thread.sd, data->buffer, data->bytes, 0, (struct sockaddr*) &data->addr, sizeof(data->addr));
+    }
 }
 
 int main(int argc, char** argv) {
@@ -56,7 +72,7 @@ int main(int argc, char** argv) {
     init_config(&tesr_config, argc, argv);
     log_config(&tesr_config);
     if(tesr_config.num_workers == 0) {
-        LOG_WARN("you are running using only one thread (num_workers=0)\n");
+        LOG_WARN("you are running in single threaded mode (num_workers=0)\n");
     }
     int ret = bind_dgram_socket(&main_thread.sd, &main_thread.addr, tesr_config.recv_port);
     if (ret == 0) {
@@ -66,6 +82,7 @@ int main(int argc, char** argv) {
 
     main_thread.queue = create_queue();
     init_queue(main_thread.queue);
+    connect_pipe(&main_thread.int_fd, &main_thread.ext_fd);
 
     main_thread.event_loop = EV_DEFAULT;  //or ev_default_loop (0);
     //Set up rate limiting
@@ -85,7 +102,7 @@ int main(int argc, char** argv) {
 
     ev_io_init(&main_thread.udp_read_watcher, udp_read_cb, main_thread.sd, EV_READ);
     ev_io_start(main_thread.event_loop, &main_thread.udp_read_watcher);
-    ev_io_init(&main_thread.inbox_watcher, udp_write_cb, main_thread.queue->int_fd, EV_READ);
+    ev_io_init(&main_thread.inbox_watcher, udp_write_cb, main_thread.int_fd, EV_READ);
     ev_io_start(main_thread.event_loop, &main_thread.inbox_watcher);
 
     // now wait for events to arrive

@@ -36,7 +36,7 @@ clean:
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	$(CC) -c -o $@ $< $(CC_FLAGS) $(CC_MACROS) $(CC_INC)
 
-$(BIN_DIR)/tesr : $(OBJS) $(INCS)
+$(BIN_DIR)/tesr : $(OBJS)
 	$(CC) -o $@ $^ $(CC_FLAGS) $(CC_MACROS) $(CC_LIBS) $(CC_INC)
 
 .java.class:

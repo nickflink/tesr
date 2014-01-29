@@ -51,13 +51,13 @@ typedef struct tesr_queue_t {
     queue_data_t *queue;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
-    int int_fd;
-    int ext_fd;
     struct queue_data_t *next;
 } tesr_queue_t;
 
 typedef struct main_thread_t {
     int sd;
+    int int_fd;
+    int ext_fd;
     struct sockaddr_in addr;
     struct ev_loop* event_loop;
     struct ev_io udp_read_watcher;
@@ -68,6 +68,8 @@ typedef struct main_thread_t {
 
 typedef struct worker_thread_t {
     int idx;
+    int int_fd;
+    int ext_fd;
     struct sockaddr_in addr;
     struct ev_loop* event_loop;
     struct ev_io inbox_watcher;

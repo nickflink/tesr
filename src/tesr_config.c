@@ -160,13 +160,8 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
             break;
         case 'w':
             num_workers_arg = atoi(optarg);
-            if(num_workers_arg == 0) {
-                LOG_ERROR("[KO] non-numeric workers '%s'", optarg);
-                config_err = CONFIG_ERR_NON_NUMERIC_ARG;
-            } else {
-                LOG_DEBUG("command line workers = %d\n", num_workers_arg);
-                tesr_config->num_workers = num_workers_arg;
-            }
+            LOG_DEBUG("command line workers = %d\n", num_workers_arg);
+            tesr_config->num_workers = num_workers_arg;
             break;
         case '?':
             config_err = CONFIG_ERR_INVALID_CMD_LINE_OPTION;

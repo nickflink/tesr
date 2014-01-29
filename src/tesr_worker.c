@@ -58,8 +58,9 @@ void init_worker(worker_thread_t *thiz, main_thread_t *main_thread, tesr_config_
     thiz->rate_limiter = rate_limiter;
     thiz->queue = create_queue();
     init_queue(thiz->queue);
+    connect_pipe(&thiz->int_fd, &thiz->ext_fd);
     thiz->event_loop = ev_loop_new(0);
-    ev_io_init(&thiz->inbox_watcher, inbox_cb_w, thiz->queue->int_fd, EV_READ);
+    ev_io_init(&thiz->inbox_watcher, inbox_cb_w, thiz->int_fd, EV_READ);
     ev_io_start(thiz->event_loop, &thiz->inbox_watcher);
 }
 void log_worker(worker_thread_t *worker_thread) {
@@ -78,6 +79,7 @@ void destroy_workers() {
 
 
 void inbox_cb_w(EV_P_ ev_io *w, int revents) {
+    LOG_WARN("inbox_cb_w\n");
     int idx;
     size_t len = sizeof(int);
     int ret = read(w->fd, &idx, len);
@@ -87,8 +89,24 @@ void inbox_cb_w(EV_P_ ev_io *w, int revents) {
     } else {
         worker_thread_t *worker_thread = get_worker_thread(idx);
         if(worker_thread) {
-            
-            work_on_queue(worker_thread->queue, worker_thread->main_thread->queue, worker_thread->filters, worker_thread->rate_limiter);
+            queue_data_t *data = tesr_dequeue(worker_thread->queue);
+            if(data) {
+                if(should_echo(data->buffer, data->bytes, &data->addr, worker_thread->filters, worker_thread->rate_limiter)) {
+                    size_t len = sizeof(data->worker_idx);
+                    LOG_DEBUG("[OK]>thread = 0x%zx should_echo\n", (size_t)pthread_self());
+                    tesr_enqueue(worker_thread->main_thread->queue, data);
+                    LOG_DEBUG("starting blocking write on thread = 0x%zx\n", (size_t)pthread_self());
+                    if (write(worker_thread->main_thread->ext_fd, &data->worker_idx, len) != len) {
+                        LOG_ERROR("Fail to writing to connection notify pipe\n");
+                    }
+                } else {
+                    LOG_DEBUG("[KO]Xthread = 0x%zx should_NOT_echo\n", (size_t)pthread_self());
+                }
+            }
+
+
+
+            //work_on_queue(worker_thread->queue, worker_thread->main_thread->queue, worker_thread->filters, worker_thread->rate_limiter);
             //pthread_mutex_lock(&worker_thread->lock);     //Don't forget locking
             //process_worker_data(worker_thread->queue, worker_thread->main_thread, worker_thread->filters, worker_thread->rate_limiter, idx);
             //pthread_mutex_unlock(&worker_thread->lock);   //Don't forget unlocking

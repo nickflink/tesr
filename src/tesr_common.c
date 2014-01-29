@@ -9,6 +9,7 @@
 #include <stdlib.h> // for strtoll
 #include "tesr_queue.h"
 #include "tesr_types.h"
+#include <unistd.h> // for pipe
 #include <utlist.h>
 
 int bind_dgram_socket(int *sd, struct sockaddr_in *addr, int port) {
@@ -78,7 +79,7 @@ int passes_filters(char *ip, tesr_filter_t *filters) {
     return ret;
 }
 
-static int should_echo(char *buffer, socklen_t bytes, struct sockaddr_in *addr, tesr_filter_t *filters, rate_limiter_t *rate_limiter) {
+int should_echo(char *buffer, socklen_t bytes, struct sockaddr_in *addr, tesr_filter_t *filters, rate_limiter_t *rate_limiter) {
     int ret = 0;
     if(buffer != NULL) {
         buffer[bytes] = '\0';
@@ -94,26 +95,6 @@ static int should_echo(char *buffer, socklen_t bytes, struct sockaddr_in *addr, 
         }
     }
     return ret;
-}
-
-//void process_queue_data(queue_data_t *data, main_thread_t *main_thread, tesr_filter_t *filters, rate_limiter_t *rate_limiter, int th) {
-void work_on_queue(tesr_queue_t *inbox, tesr_queue_t *outbox, tesr_filter_t *filters, rate_limiter_t *rate_limiter) {
-    queue_data_t *data = tesr_dequeue(inbox);
-LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
-    if(data) {
-LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
-        if(should_echo(data->buffer, data->bytes, &data->addr, filters, rate_limiter)) {
-LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
-            LOG_DEBUG("[OK]>thread = 0x%zx should_echo\n", (size_t)pthread_self());
-LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
-            tesr_enqueue(outbox, data);
-LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
-        } else {
-LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
-            LOG_DEBUG("[KO]Xthread = 0x%zx should_NOT_echo\n", (size_t)pthread_self());
-LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
-        }
-    }
 }
 
 void log_lock_error(int lock_error) {
@@ -139,3 +120,15 @@ void log_lock_error(int lock_error) {
         break;
     }
 }
+
+int connect_pipe(int *int_fd, int *ext_fd) {
+    int fds[2];
+    if(pipe(fds)) {
+        LOG_ERROR("Can't create notify pipe");
+        return 0;
+    }
+    *int_fd = fds[0];
+    *ext_fd = fds[1];
+     return 1;
+}
+
