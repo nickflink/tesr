@@ -36,7 +36,8 @@ public class EchoBlast extends Thread {
                     byte arr[] = sentTimeMsg.getBytes( );
                     DatagramPacket dpack = new DatagramPacket(arr, arr.length, add, PORT_NUM);
                     dsock.send(dpack);// send the packet
-                    System.out.println("Sent "+i+"/"+NUM_PACKETS);
+                    //System.out.println("Sent "+i+"/"+NUM_PACKETS);
+                    System.out.print("s");
                 }
             } catch (java.net.UnknownHostException e) {
                 System.out.println("caught java.net.UnknownHostException");
@@ -45,7 +46,7 @@ public class EchoBlast extends Thread {
             } catch (java.io.IOException e) {
                 System.out.println("caught java.io.IOException");
             }
-            System.out.println("< sendUdp");
+            //System.out.println("< sendUdp");
             callback.onProducerFinished();
         }
     }
@@ -67,22 +68,23 @@ public class EchoBlast extends Thread {
                 int bufSize = maxLongString.length()+1;
                 int count = 0;
                 while(true && count < NUM_PACKETS) {
-                    System.out.println("> creating buffer with length "+bufSize);
+                    //System.out.println("> creating buffer with length "+bufSize);
                     byte[] buf = new byte[bufSize];
                     DatagramPacket dpack = new DatagramPacket(buf, buf.length);
-                    System.out.println("> dsock.receive");
+                    //System.out.println("> dsock.receive");
                     dsock.receive(dpack); // receive the packet
                     ++count;
-                    System.out.println("> dsock.close");
+                    //System.out.println("> dsock.close");
                     String message = new String(dpack.getData( ));
                     Date receiveTime = new Date( ); // note the time of receiving the message
                     long cTime = receiveTime.getTime();
-                    System.out.println("> about to Long.parseLong("+message+")");
+                    //System.out.println("> about to Long.parseLong("+message+")");
                     long sTime = Long.parseLong(message.trim());
-                    System.out.println("cTime "+cTime);
-                    System.out.println("sTime "+sTime);
-                    System.out.println("eTime "+(cTime-sTime));
-                    System.out.println("recv "+count+" packet(s)");
+                    System.out.print("r");
+                    //System.out.println("cTime "+cTime);
+                    //System.out.println("sTime "+sTime);
+                    //System.out.println("eTime "+(cTime-sTime));
+                    //System.out.println("recv "+count+" packet(s)");
                     callback.onResultReceived(cTime-sTime);
                 }
             } catch (java.net.UnknownHostException e) {
@@ -96,7 +98,7 @@ public class EchoBlast extends Thread {
             //} catch (java.lang.InterruptedException e) {
             //    System.out.println("caught java.lang.InterruptedException");
             }
-            System.out.println("< recvUdp");
+            //System.out.println("< recvUdp");
             callback.onConsumerFinished();
         }
     }
@@ -113,17 +115,17 @@ public class EchoBlast extends Thread {
     }
 
     private void onProducerFinished() {
-        System.out.println("> onProducerFinished");
+        //System.out.println("> onProducerFinished");
         this.producerFinished = true;
     }
 
     private void onConsumerFinished() {
-        System.out.println("> onConsumerFinished");
+        //System.out.println("> onConsumerFinished");
         this.consumerFinished = true;
     }
 
     private boolean finished() {
-        System.out.println("> finished(producerFinished && consumerFinished)="+producerFinished+" && "+consumerFinished+"\n");
+        //System.out.println("> finished(producerFinished && consumerFinished)="+producerFinished+" && "+consumerFinished+"\n");
         return producerFinished && consumerFinished;
     }
 

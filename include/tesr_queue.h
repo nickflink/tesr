@@ -11,8 +11,8 @@
 tesr_queue_t *create_queue();
 int init_queue();
 void log_queue(tesr_queue_t *thiz);
-void tesr_enqueue(tesr_queue_t *thiz, queue_data_t *data);
-queue_data_t *tesr_dequeue(tesr_queue_t *thiz);
+void tesr_enqueue(tesr_queue_t *thiz, queue_data_t *data, const char *tname);
+queue_data_t *tesr_dequeue(tesr_queue_t *thiz, const char *tname);
 void destroy_queue(tesr_queue_t *thiz);
 
 queue_data_t *create_queue_data();

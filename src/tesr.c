@@ -32,14 +32,14 @@ static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     size_t len = sizeof(data->worker_idx);
     if(tesr_config.num_workers == 0) {
         if(should_echo(data->buffer, data->bytes, &data->addr, tesr_config.filters, main_thread.rate_limiter)) {
-            tesr_enqueue(main_thread.queue, data);
+            tesr_enqueue(main_thread.queue, data, get_thread_string());
             LOG_DEBUG("{%s} SENDING NOTIFY MainThread => MainThread\n", get_thread_string());
             if (write(main_thread.ext_fd, &data->worker_idx, len) != len) {
                 LOG_ERROR("Fail to writing to connection notify pipe\n");
             }
         }
     } else {
-        tesr_enqueue(worker_threads[th].queue, data);
+        tesr_enqueue(worker_threads[th].queue, data, get_thread_string());
         LOG_DEBUG("{%s} SENDING NOTIFY MainThread => WorkThread[%d]\n", get_thread_string(), th);
         if (write(worker_threads[th].ext_fd, &data->worker_idx, len) != len) {
             LOG_ERROR("Fail to writing to connection notify pipe\n");
@@ -52,7 +52,7 @@ LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (
 }
 
 static void udp_write_cb(EV_P_ ev_io *w, int revents) {
-    LOG_WARN("udp_write_cb\n");
+    LOG_LOC;
     int idx;
     size_t len = sizeof(int);
     LOG_DEBUG("{%s} RECVING NOTIFY WorkThread[?] => MainThread\n", get_thread_string());
@@ -62,7 +62,7 @@ static void udp_write_cb(EV_P_ ev_io *w, int revents) {
         LOG_INFO("[KO] ret = %d != %d len\n", ret, (int)len);
     } else {
         LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
-        queue_data_t *data = tesr_dequeue(main_thread.queue);
+        queue_data_t *data = tesr_dequeue(main_thread.queue, get_thread_string());
         LOG_DEBUG("LOC:%d::%s::%s thread = 0x%zx\n", __LINE__, __FILE__, __FUNCTION__, (size_t)pthread_self());
         sendto(main_thread.sd, data->buffer, data->bytes, 0, (struct sockaddr*) &data->addr, sizeof(data->addr));
     }
