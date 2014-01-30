@@ -27,7 +27,8 @@ static void sigint_cb (struct ev_loop *loop, struct ev_signal *w, int revents) {
   int kill_pill = -1;
   size_t len = sizeof(kill_pill);
   ev_io_stop(main_thread.event_loop, &main_thread.udp_read_watcher);
-  for(int th = 0; th < tesr_config.num_workers; th++) {
+  int th = 0;
+  for(th = 0; th < tesr_config.num_workers; th++) {
       if (write(worker_threads[th].ext_fd, &kill_pill, len) != len) {
           LOG_ERROR("Fail to writing to connection notify pipe\n");
       }
