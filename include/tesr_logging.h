@@ -32,8 +32,8 @@
 #define LOG_LOCATION(file, line, function) do{fprintf(stdout,"LOC:%d::%s::%s\n",line,file,function);fflush(stdout);}while(0)//This should never be called directly use LOG_LOC instead
 #define LOG_LOC LOG_LOCATION(__FILE__, __LINE__, __FUNCTION__)
 #else //!LOG_LEVEL >= VERBOSE_LEVEL
-#define LOG_ALLOC(...) do{}while(0)
-#define LOG_FREE(...) do{}while(0)
+#define TESR_LOG_ALLOC(...) do{}while(0)
+#define TESR_LOG_FREE(...) do{}while(0)
 #define LOG_LOC do{}while(0)
 #endif //LOG_LEVEL >= VERBOSE_LEVEL
 

@@ -21,7 +21,6 @@
 
 int main(int argc, char** argv) {
     LOG_LOC;
-    LOG_INFO("[TID] 0x%zx %s\n", (size_t)pthread_self(), __FUNCTION__);
     tesr_config_t *config = create_config();
     init_config(config, argc, argv);
     log_config(config);
@@ -31,6 +30,6 @@ int main(int argc, char** argv) {
         supervisor_thread_run(supervisor);
     }
     destroy_supervisor(supervisor);
-    LOG_DEBUG("That's all folks!\n");
+    LOG_INFO("That's all folks!\n");
     return 0;
 }

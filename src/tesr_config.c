@@ -192,8 +192,8 @@ void destroy_config(tesr_config_t *thiz) {
 }
 
 void log_config(tesr_config_t *thiz) {
-    LOG_INFO("thiz->recv_port=%d\n", thiz->recv_port);
-    LOG_INFO("thiz->num_workers=%d\n", thiz->num_workers);
+    LOG_INFO("recv_port=%d\n", thiz->recv_port);
+    LOG_INFO("num_workers=%d\n", thiz->num_workers);
     int print_comma = 0;
     tesr_filter_t *filter = NULL;
     LOG_INFO("filters=[");

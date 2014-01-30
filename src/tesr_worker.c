@@ -93,9 +93,8 @@ worker_thread_t *create_worker() {
 
 void* worker_thread_run(void* args) {
     LOG_LOC;
-    LOG_INFO("[TID] 0x%zx %s\n", (size_t)pthread_self(), __FUNCTION__);
+    LOG_DEBUG("[TID] 0x%zx %s\n", (size_t)pthread_self(), __FUNCTION__);
     worker_thread_t *thiz = (worker_thread_t*)args;
-    log_worker(thiz);
     ev_io_start(thiz->event_loop, &thiz->inbox_watcher);
     ev_loop(thiz->event_loop, 0);
     return NULL;

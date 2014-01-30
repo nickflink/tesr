@@ -36,7 +36,7 @@ static void sigint_cb (struct ev_loop *loop, struct ev_signal *w, int revents) {
                 LOG_ERROR("Fail to writing to connection notify pipe\n");
             }
             pthread_join(thiz->worker_threads[th]->thread, NULL);
-            LOG_ERROR("{%s} JOINED\n", get_thread_string());
+            LOG_DEBUG("{%s} JOINED\n", get_thread_string());
         }
         //ev_unloop(supervisor_thread->event_loop, EVUNLOOP_ONE);
         ev_unloop(thiz->event_loop, EVUNLOOP_ALL);
@@ -176,6 +176,7 @@ void log_supervisor(supervisor_thread_t *thiz) {
 
 void supervisor_thread_run(supervisor_thread_t *thiz) {
     LOG_LOC;
+    LOG_DEBUG("[TID] 0x%zx %s\n", (size_t)pthread_self(), __FUNCTION__);
     ev_io_start(thiz->event_loop, &thiz->udp_read_watcher);
     ev_io_start(thiz->event_loop, &thiz->inbox_watcher);
     ev_signal_start(thiz->event_loop, &thiz->sigint_watcher);
