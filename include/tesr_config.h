@@ -7,6 +7,8 @@
 #include <arpa/inet.h>
 #include <tesr_common.h>
 #include "tesr_types.h"
-void log_config(tesr_config_t *tesr_config);
-void init_config(tesr_config_t *tesr_config, int argc, char **argv);
+tesr_config_t *create_config();
+void init_config(tesr_config_t *thiz, int argc, char **argv);
+void destroy_config(tesr_config_t *thiz);
+void log_config(tesr_config_t *thiz);
 #endif //TESR_CONFIG_H

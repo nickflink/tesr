@@ -20,6 +20,7 @@ OBJS = $(OBJ_DIR)/tesr.o \
        $(OBJ_DIR)/tesr_common.o \
        $(OBJ_DIR)/tesr_queue.o \
        $(OBJ_DIR)/tesr_rate_limiter.o \
+       $(OBJ_DIR)/tesr_supervisor.o \
        $(OBJ_DIR)/tesr_worker.o \
 
 INCS = $(wildcard include/*.h)

@@ -54,20 +54,6 @@ typedef struct tesr_queue_t {
     struct queue_data_t *next;
 } tesr_queue_t;
 
-typedef struct main_thread_t {
-    int sd;
-    int int_fd;
-    int ext_fd;
-    struct sockaddr_in addr;
-    struct ev_loop* event_loop;
-    struct ev_io udp_read_watcher;
-    struct ev_io inbox_watcher;
-    struct ev_signal sigint_watcher;
-    struct ev_signal sigchld_watcher;
-    tesr_queue_t *queue;
-    rate_limiter_t *rate_limiter;
-} main_thread_t;
-
 typedef struct worker_thread_t {
     int idx;
     int int_fd;
@@ -81,6 +67,24 @@ typedef struct worker_thread_t {
     tesr_queue_t *queue;
     tesr_filter_t *filters;
     rate_limiter_t *rate_limiter;
-    main_thread_t *main_thread;
+//    supervisor_thread_t *main_thread;
 } worker_thread_t;
+
+typedef struct supervisor_thread_t {
+    int sd;
+    int int_fd;
+    int ext_fd;
+    int next_thread_idx;
+    struct sockaddr_in addr;
+    struct ev_loop* event_loop;
+    struct ev_io udp_read_watcher;
+    struct ev_io inbox_watcher;
+    struct ev_signal sigint_watcher;
+    struct ev_signal sigchld_watcher;
+    tesr_queue_t *queue;
+    rate_limiter_t *rate_limiter;
+    worker_thread_t *worker_threads;
+    tesr_config_t *config;
+} supervisor_thread_t;
+
 #endif //TESR_TYPES_H

@@ -13,34 +13,23 @@
 #define CONFIG_ERR_UNPARSED_CMD_LINE_OPTION 4
 #define CONFIG_ERR_HELP_REQUESTED 5
 
-void log_config(tesr_config_t *tesr_config) {
-    LOG_INFO("tesr_config->recv_port=%d\n", tesr_config->recv_port);
-    LOG_INFO("tesr_config->num_workers=%d\n", tesr_config->num_workers);
-    int print_comma = 0;
-    tesr_filter_t *filter = NULL;
-    LOG_INFO("filters=[");
-    LL_FOREACH(tesr_config->filters, filter) {
-        if(print_comma) {
-            LOG_INFO(",");
-        } else {
-            print_comma = 1;
-        }
-        LOG_INFO("%s", filter->filter);
-    }
-    LOG_INFO("]\n");
+tesr_config_t *create_config() {
+    tesr_config_t* thiz = NULL;
+    thiz = (tesr_config_t*)malloc(sizeof(tesr_config_t));
+    return thiz;
 }
 
-void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
+void init_config(tesr_config_t *thiz, int argc, char **argv) {
     //
     // DEFAULTS
     //
     int config_err = CONFIG_ERR_NONE;
-    tesr_config->recv_port = DEFAULT_RECV_PORT;
-    tesr_config->ip_rate_limit_max = DEFAULT_IP_RATE_LIMIT_MAX;
-    tesr_config->ip_rate_limit_period = DEFAULT_IP_RATE_LIMIT_PERIOD;
-    tesr_config->ip_rate_limit_prune_mark = DEFAULT_IP_RATE_LIMIT_PRUNE_MARK;
-    tesr_config->num_workers = 0;
-    tesr_config->filters = NULL;
+    thiz->recv_port = DEFAULT_RECV_PORT;
+    thiz->ip_rate_limit_max = DEFAULT_IP_RATE_LIMIT_MAX;
+    thiz->ip_rate_limit_period = DEFAULT_IP_RATE_LIMIT_PERIOD;
+    thiz->ip_rate_limit_prune_mark = DEFAULT_IP_RATE_LIMIT_PRUNE_MARK;
+    thiz->num_workers = 0;
+    thiz->filters = NULL;
     int recv_port_conf = 0;
     int recv_port_arg = 0;
     int num_workers_conf = 0;
@@ -79,35 +68,35 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
         // get the value of recv_port
         if(config_lookup_int(&cfg, "recv_port", &recv_port_conf)) {
             LOG_DEBUG("\nrecv_port: %d\n", recv_port_conf);
-            tesr_config->recv_port = recv_port_conf;
+            thiz->recv_port = recv_port_conf;
         } else {
             LOG_DEBUG("\nNo 'recv_port' setting in configuration file.");
         }
         // get the value of num_workers
         if(config_lookup_int(&cfg, "num_workers", &num_workers_conf)) {
             LOG_DEBUG("\nnum_workers: %d\n", num_workers_conf);
-            tesr_config->num_workers = num_workers_conf;
+            thiz->num_workers = num_workers_conf;
         } else {
             LOG_DEBUG("\nNo 'num_workers' setting in configuration file.");
         }
         // get the value of ip_rate_limit_max
-        if(config_lookup_int(&cfg, "ip_rate_limit_max", &tesr_config->ip_rate_limit_max)) {
-            LOG_INFO("\nip_rate_limit_max: %d\n", tesr_config->ip_rate_limit_max);
-            tesr_config->ip_rate_limit_max = tesr_config->ip_rate_limit_max;
+        if(config_lookup_int(&cfg, "ip_rate_limit_max", &thiz->ip_rate_limit_max)) {
+            LOG_INFO("\nip_rate_limit_max: %d\n", thiz->ip_rate_limit_max);
+            thiz->ip_rate_limit_max = thiz->ip_rate_limit_max;
         } else {
             LOG_INFO("\nNo 'ip_rate_limit_max' setting in configuration file disabling.");
         }
         // get the value of ip_rate_limit_period
-        if(config_lookup_int(&cfg, "ip_rate_limit_period", &tesr_config->ip_rate_limit_period)) {
-            LOG_INFO("\nip_rate_limit_period: %d\n", tesr_config->ip_rate_limit_period);
-            tesr_config->ip_rate_limit_period = tesr_config->ip_rate_limit_period;
+        if(config_lookup_int(&cfg, "ip_rate_limit_period", &thiz->ip_rate_limit_period)) {
+            LOG_INFO("\nip_rate_limit_period: %d\n", thiz->ip_rate_limit_period);
+            thiz->ip_rate_limit_period = thiz->ip_rate_limit_period;
         } else {
             LOG_INFO("\nNo 'ip_rate_limit_period' setting in configuration file.");
         }
         // get the value of ip_rate_limit_prune_mark
-        if(config_lookup_int(&cfg, "ip_rate_limit_prune_mark", &tesr_config->ip_rate_limit_prune_mark)) {
-            LOG_INFO("\nip_rate_limit_period: %d\n", tesr_config->ip_rate_limit_prune_mark);
-            tesr_config->ip_rate_limit_prune_mark = tesr_config->ip_rate_limit_prune_mark;
+        if(config_lookup_int(&cfg, "ip_rate_limit_prune_mark", &thiz->ip_rate_limit_prune_mark)) {
+            LOG_INFO("\nip_rate_limit_period: %d\n", thiz->ip_rate_limit_prune_mark);
+            thiz->ip_rate_limit_prune_mark = thiz->ip_rate_limit_prune_mark;
         } else {
             LOG_INFO("\nNo 'ip_rate_limit_prune_mark' setting in configuration file.");
         }
@@ -122,7 +111,7 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
                 if(sz_filter) {
                     tesr_filter_t *element = (tesr_filter_t *)malloc(sizeof(tesr_filter_t));
                     strncpy(element->filter, sz_filter, INET_ADDRSTRLEN);
-                    LL_PREPEND(tesr_config->filters, element);
+                    LL_PREPEND(thiz->filters, element);
                     LOG_DEBUG("filter=%s\n", sz_filter);
                 }
                 filter = config_setting_get_elem(filters, filterIdx++);
@@ -155,13 +144,13 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
                 config_err = CONFIG_ERR_NON_NUMERIC_ARG;
             } else {
                 LOG_DEBUG("command line port = %d\n", recv_port_arg);
-                tesr_config->recv_port = recv_port_arg;
+                thiz->recv_port = recv_port_arg;
             }
             break;
         case 'w':
             num_workers_arg = atoi(optarg);
             LOG_DEBUG("command line workers = %d\n", num_workers_arg);
-            tesr_config->num_workers = num_workers_arg;
+            thiz->num_workers = num_workers_arg;
             break;
         case '?':
             config_err = CONFIG_ERR_INVALID_CMD_LINE_OPTION;
@@ -189,3 +178,30 @@ void init_config(tesr_config_t *tesr_config, int argc, char **argv) {
         exit(config_err);
     }
 }
+
+void destroy_config(tesr_config_t *thiz) {
+    if(thiz) {
+        free(thiz);
+        thiz = NULL;
+    } else {
+        LOG_ERROR("can not free tesr_config_t* as it is NULL");
+    }
+}
+
+void log_config(tesr_config_t *thiz) {
+    LOG_INFO("thiz->recv_port=%d\n", thiz->recv_port);
+    LOG_INFO("thiz->num_workers=%d\n", thiz->num_workers);
+    int print_comma = 0;
+    tesr_filter_t *filter = NULL;
+    LOG_INFO("filters=[");
+    LL_FOREACH(thiz->filters, filter) {
+        if(print_comma) {
+            LOG_INFO(",");
+        } else {
+            print_comma = 1;
+        }
+        LOG_INFO("%s", filter->filter);
+    }
+    LOG_INFO("]\n");
+}
+

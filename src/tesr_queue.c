@@ -21,6 +21,16 @@ int init_queue(tesr_queue_t *thiz) {
     pthread_cond_init(&thiz->cond, NULL);
     return 1;
 }
+
+void destroy_queue(tesr_queue_t *thiz) {
+    if(thiz) {
+        free(thiz);
+        thiz = NULL;
+    } else {
+        LOG_ERROR("can not free tesr_queue_t * as it is NULL");
+    }
+}
+
 void log_queue(tesr_queue_t *thiz) {
     int print_comma = 0;
     LOG_INFO("filters=[");
@@ -78,13 +88,6 @@ queue_data_t *tesr_dequeue(tesr_queue_t *thiz, const char *tname) {
     return data;
 }
 
-void destroy_queue(tesr_queue_t *thiz) {
-    if(thiz) {
-        free(thiz);
-    } else {
-        LOG_ERROR("can not free tesr_queue_t * as it is NULL");
-    }
-}
 
 queue_data_t *create_queue_data() {
     queue_data_t *queue_data = NULL;
@@ -95,6 +98,7 @@ queue_data_t *create_queue_data() {
 void destroy_queue_data(queue_data_t *thiz) {
     if(thiz) {
         free(thiz);
+        thiz = NULL;
     } else {
         LOG_ERROR("can not free queue_data_t * as it is NULL");
     }

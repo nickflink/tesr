@@ -9,11 +9,11 @@
 #include <tesr_rate_limiter.h>
 #include "tesr_types.h"
 tesr_queue_t *create_queue();
-int init_queue();
+int init_queue(tesr_queue_t *thiz);
+void destroy_queue(tesr_queue_t *thiz);
 void log_queue(tesr_queue_t *thiz);
 void tesr_enqueue(tesr_queue_t *thiz, queue_data_t *data, const char *tname);
 queue_data_t *tesr_dequeue(tesr_queue_t *thiz, const char *tname);
-void destroy_queue(tesr_queue_t *thiz);
 
 queue_data_t *create_queue_data();
 void destroy_queue_data(queue_data_t *thiz);

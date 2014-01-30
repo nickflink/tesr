@@ -8,6 +8,7 @@
 #include "tesr_common.h"
 #include "tesr_queue.h"
 #include "tesr_rate_limiter.h"
+#include "tesr_supervisor.h"
 #include <unistd.h> // for usleep
 #include <utlist.h>
 
@@ -15,7 +16,7 @@
 static worker_thread_t *worker_threads = NULL;
 static int num_threads = 0;
 
-static worker_thread_t *get_worker_thread(int idx) {
+worker_thread_t *get_worker_thread(int idx) {
     worker_thread_t *worker_thread = NULL;
     if(worker_threads && 0 <= idx && idx < num_threads) {
         worker_thread = &worker_threads[idx];
@@ -23,40 +24,37 @@ static worker_thread_t *get_worker_thread(int idx) {
     return worker_thread;
 }
 
-//static void sigint_cb(struct ev_loop *loop, struct ev_signal *w, int revents) {
-//  LOG_DEBUG("{%s} caught signal!\n", get_thread_string());
-//  //ev_unloop(loop, EVUNLOOP_ALL);
-//  ev_unloop(loop, EVUNLOOP_ONE);
-//}
-
-void inbox_cb_w(EV_P_ ev_io *w, int revents) {
+static void inbox_cb_w(EV_P_ ev_io *w, int revents) {
     LOG_LOC;
     int idx;
     size_t len = sizeof(int);
-    LOG_DEBUG("{%s} RECVING NOTIFY MainThread => WorkThread[?]\n", get_thread_string());
-    int ret = read(w->fd, &idx, len);
-    if (ret != len) {
-        LOG_ERROR("Can't read from connection notify pipe\n");
-        LOG_INFO("[KO] ret = %d != %d len\n", ret, (int)len);
-    } if(idx < 0) {
-        //ev_unloop(EV_A_, EVUNLOOP_ALL);
-        LOG_DEBUG("{%s} RECVING KILL_PILL MainThread => WorkThread[?]\n", get_thread_string());
-        ev_unloop(EV_A_ EVUNLOOP_ALL);
-    } else {
-        worker_thread_t *worker_thread = get_worker_thread(idx);
-        if(worker_thread) {
-            queue_data_t *data = tesr_dequeue(worker_thread->queue, get_thread_string());
-            if(data) {
-                if(should_echo(data->buffer, data->bytes, &data->addr, worker_thread->filters, worker_thread->rate_limiter)) {
-                    size_t len = sizeof(data->worker_idx);
-                    LOG_DEBUG("[OK]>thread = 0x%zx should_echo\n", (size_t)pthread_self());
-                    tesr_enqueue(worker_thread->main_thread->queue, data, get_thread_string());
-                    LOG_DEBUG("{%s} SENDING NOTIFY WorkThread[%d] => MainThread\n", get_thread_string(), idx);
-                    if (write(worker_thread->main_thread->ext_fd, &data->worker_idx, len) != len) {
-                        LOG_ERROR("Fail to writing to connection notify pipe\n");
+    supervisor_thread_t *supervisor_thread = get_supervisor_thread();
+    if(supervisor_thread) {
+        LOG_DEBUG("{%s} RECVING NOTIFY MainThread => WorkThread[?]\n", get_thread_string());
+        int ret = read(w->fd, &idx, len);
+        if (ret != len) {
+            LOG_ERROR("Can't read from connection notify pipe\n");
+            LOG_INFO("[KO] ret = %d != %d len\n", ret, (int)len);
+        } if(idx < 0) {
+            //ev_unloop(EV_A_, EVUNLOOP_ALL);
+            LOG_DEBUG("{%s} RECVING KILL_PILL MainThread => WorkThread[?]\n", get_thread_string());
+            ev_unloop(EV_A_ EVUNLOOP_ALL);
+        } else {
+            worker_thread_t *worker_thread = get_worker_thread(idx);
+            if(worker_thread) {
+                queue_data_t *data = tesr_dequeue(worker_thread->queue, get_thread_string());
+                if(data) {
+                    if(should_echo(data->buffer, data->bytes, &data->addr, worker_thread->filters, worker_thread->rate_limiter)) {
+                        size_t len = sizeof(data->worker_idx);
+                        LOG_DEBUG("[OK]>thread = 0x%zx should_echo\n", (size_t)pthread_self());
+                        tesr_enqueue(supervisor_thread->queue, data, get_thread_string());
+                        LOG_DEBUG("{%s} SENDING NOTIFY WorkThread[%d] => MainThread\n", get_thread_string(), idx);
+                        if (write(supervisor_thread->ext_fd, &data->worker_idx, len) != len) {
+                            LOG_ERROR("Fail to writing to connection notify pipe\n");
+                        }
+                    } else {
+                        LOG_DEBUG("[KO]Xthread = 0x%zx should_NOT_echo\n", (size_t)pthread_self());
                     }
-                } else {
-                    LOG_DEBUG("[KO]Xthread = 0x%zx should_NOT_echo\n", (size_t)pthread_self());
                 }
             }
         }
@@ -73,45 +71,53 @@ worker_thread_t *create_workers(int num) {
     }
     return worker_threads;
 }
-void* worker_thread_start(void* args) {
+void* worker_thread_run(void* args) {
     LOG_LOC;
     LOG_INFO("[TID] 0x%zx %s\n", (size_t)pthread_self(), __FUNCTION__);
-    worker_thread_t *me = (worker_thread_t*)args;
-    log_worker(me);
-    ev_loop(me->event_loop, 0);
+    worker_thread_t *thiz = (worker_thread_t*)args;
+    log_worker(thiz);
+    ev_io_start(thiz->event_loop, &thiz->inbox_watcher);
+    ev_loop(thiz->event_loop, 0);
     return NULL;
 }
 
 //called on the main thread
-void init_worker(worker_thread_t *thiz, main_thread_t *main_thread, tesr_config_t *config, rate_limiter_t *rate_limiter, int idx) {
+void init_worker(worker_thread_t *thiz, supervisor_thread_t *supervisor_thread, int idx) {
     LOG_LOC;
     thiz->idx = idx;
-    thiz->main_thread = main_thread;
+    //thiz->main_thread = main_thread;
     thiz->filters = NULL;
     tesr_filter_t *filter = NULL;
     tesr_filter_t *cpfilter = NULL;
-    LL_FOREACH(config->filters, filter) {
+    //TODO: This should probably live in the ratelimiter
+    LL_FOREACH(supervisor_thread->config->filters, filter) {
         LOG_DEBUG("Prepend> %s\n", filter->filter);
         cpfilter = (tesr_filter_t*)malloc(sizeof(tesr_filter_t));
         cpfilter = memcpy(cpfilter, filter, sizeof(tesr_filter_t));
         LL_PREPEND(thiz->filters, cpfilter);
     }
-    thiz->rate_limiter = rate_limiter;
+    thiz->rate_limiter = supervisor_thread->rate_limiter;
     thiz->queue = create_queue();
     init_queue(thiz->queue);
     connect_pipe(&thiz->int_fd, &thiz->ext_fd);
     thiz->event_loop = ev_loop_new(0);
     ev_io_init(&thiz->inbox_watcher, inbox_cb_w, thiz->int_fd, EV_READ);
-    ev_io_start(thiz->event_loop, &thiz->inbox_watcher);
-    //ev_signal_init(&thiz->signal_watcher, sigint_cb, SIGINT);
-    //ev_signal_start(thiz->event_loop, &thiz->signal_watcher);
 }
-void log_worker(worker_thread_t *worker_thread) {
-    LOG_INFO("worker_thread[%d] => 0x%zx\n",worker_thread->idx, (size_t)pthread_self());
+void destroy_worker(worker_thread_t *thiz) {
+    if(thiz) {
+        free(thiz);
+        thiz = NULL;
+    } else {
+        LOG_ERROR("can not free worker_thread_t * as it is NULL");
+    }
+}
+void log_worker(worker_thread_t *thiz) {
+    LOG_INFO("worker_thread[%d] => 0x%zx\n", thiz->idx, (size_t)pthread_self());
 }
 void destroy_workers() {
     LOG_LOC;
     if(worker_threads) {
+        //destroy filters
         free(worker_threads);
         num_threads = 0;
         worker_threads = NULL;
