@@ -6,7 +6,9 @@
 #define DEFAULT_IP_RATE_LIMIT_PRUNE_MARK 0
 #include <arpa/inet.h>
 #include <tesr_common.h>
+#include "tesr_macros.h"
 #include "tesr_types.h"
+//TESR_CREATE(tesr_config_t)
 tesr_config_t *create_config();
 void init_config(tesr_config_t *thiz, int argc, char **argv);
 void destroy_config(tesr_config_t *thiz);

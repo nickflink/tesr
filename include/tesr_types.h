@@ -83,7 +83,7 @@ typedef struct supervisor_thread_t {
     struct ev_signal sigchld_watcher;
     tesr_queue_t *queue;
     rate_limiter_t *rate_limiter;
-    worker_thread_t *worker_threads;
+    worker_thread_t **worker_threads;
     tesr_config_t *config;
 } supervisor_thread_t;
 

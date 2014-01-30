@@ -5,14 +5,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h> // for strtoll
-#include <tesr_common.h>
+#include "tesr_common.h"
 #include <utlist.h>
 #include <uthash.h>
 
 rate_limiter_t *create_rate_limiter() {
-    rate_limiter_t *rate_limiter = NULL;
-    rate_limiter = (rate_limiter_t*)malloc(sizeof(rate_limiter_t));
-    return rate_limiter;
+    rate_limiter_t *thiz = NULL;
+    thiz = (rate_limiter_t*)malloc(sizeof(rate_limiter_t));
+    TESR_LOG_ALLOC(thiz, rate_limiter_t);
+    return thiz;
 }
 
 void init_rate_limiter(rate_limiter_t *rate_limiter, int ip_rate_limit_max, int ip_rate_limit_period, int ip_rate_limit_prune_mark) {
@@ -23,9 +24,11 @@ void init_rate_limiter(rate_limiter_t *rate_limiter, int ip_rate_limit_max, int 
     rate_limiter->ip_rate_limit_prune_mark = ip_rate_limit_prune_mark;
 }
 
-void destroy_rate_limiter(rate_limiter_t *rate_limiter) {
-    if(rate_limiter) {
-        free(rate_limiter);
+void destroy_rate_limiter(rate_limiter_t *thiz) {
+    if(thiz) {
+        destroy_rate_limit_map(thiz->rate_limit_map);
+        TESR_LOG_FREE(thiz, rate_limiter_t);
+        free(thiz);
     } else {
         LOG_ERROR("can not free rate_limiter it is NULL");
     }
@@ -48,7 +51,7 @@ int prune_expired_ips(rate_limiter_t *rate_limiter) {
             LOG_DEBUG("rl{%s} = %d [%f]sec elapsed\n", rl->ip, rl->count, time_elapsed);
             if(time_elapsed > rate_limiter->ip_rate_limit_period) {
                 HASH_DEL(rate_limiter->rate_limit_map, rl);  // delete; rate_limit_map advances to next
-                free(rl);
+                destroy_rate_limit(rl);
                 ++pruned;
             }
         }
@@ -60,7 +63,7 @@ int prune_expired_ips(rate_limiter_t *rate_limiter) {
     return pruned;
 }
 
-int is_under_rate_limit(rate_limiter_t *rate_limiter, char *ip) {
+int is_under_rate_limit(rate_limiter_t *rate_limiter, const char *ip) {
     int ret = 1;
     if(0 < rate_limiter->ip_rate_limit_max) {
       LOG_DEBUG("LOCK is_under_rate_limit thread = 0x%zx\n", (size_t)pthread_self());
@@ -70,10 +73,8 @@ int is_under_rate_limit(rate_limiter_t *rate_limiter, char *ip) {
         rate_limit_struct_t *rl = NULL;
         HASH_FIND_STR( rate_limiter->rate_limit_map, ip, rl );
         if(!rl) {
-            rl = malloc(sizeof(rate_limit_struct_t));
-            time(&rl->last_check);
-            strncpy(rl->ip, ip, INET_ADDRSTRLEN);
-            rl->count = 0;
+            rl = create_rate_limit();
+            init_rate_limit(rl, ip);
             HASH_ADD_STR( rate_limiter->rate_limit_map, ip, rl);
         }
         ++rl->count;

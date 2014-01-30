@@ -11,9 +11,10 @@
 #include <utlist.h>
 
 tesr_queue_t *create_queue() {
-    tesr_queue_t *tesr_queue = NULL;
-    tesr_queue = (tesr_queue_t*)malloc(sizeof(tesr_queue_t));
-    return tesr_queue;
+    tesr_queue_t *thiz = NULL;
+    thiz = (tesr_queue_t*)malloc(sizeof(tesr_queue_t));
+    TESR_LOG_ALLOC(thiz, tesr_queue_t);
+    return thiz;
 }
 int init_queue(tesr_queue_t *thiz) {
     thiz->queue = NULL;
@@ -24,6 +25,7 @@ int init_queue(tesr_queue_t *thiz) {
 
 void destroy_queue(tesr_queue_t *thiz) {
     if(thiz) {
+        TESR_LOG_FREE(thiz, tesr_queue_t);
         free(thiz);
         thiz = NULL;
     } else {
@@ -89,17 +91,3 @@ queue_data_t *tesr_dequeue(tesr_queue_t *thiz, const char *tname) {
 }
 
 
-queue_data_t *create_queue_data() {
-    queue_data_t *queue_data = NULL;
-    queue_data = (queue_data_t*)malloc(sizeof(queue_data_t));
-    return queue_data;
-}
-
-void destroy_queue_data(queue_data_t *thiz) {
-    if(thiz) {
-        free(thiz);
-        thiz = NULL;
-    } else {
-        LOG_ERROR("can not free queue_data_t * as it is NULL");
-    }
-}

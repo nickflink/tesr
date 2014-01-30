@@ -16,6 +16,7 @@
 tesr_config_t *create_config() {
     tesr_config_t* thiz = NULL;
     thiz = (tesr_config_t*)malloc(sizeof(tesr_config_t));
+    TESR_LOG_ALLOC(thiz, tesr_config_t);
     return thiz;
 }
 
@@ -55,50 +56,50 @@ void init_config(tesr_config_t *thiz, int argc, char **argv) {
     if(!config_loaded) {
         config_loaded = config_read_file(&cfg, system_config_file_name);
         if(config_loaded) {
-        LOG_INFO("using config %s\n", system_config_file_name);
-    } else {
-        LOG_INFO("no system config found at %s\n", system_config_file_name);
-    }
+            LOG_INFO("using config %s\n", system_config_file_name);
+        } else {
+            LOG_INFO("no system config found at %s\n", system_config_file_name);
+        }
     }
     if(!config_loaded) {
-        LOG_WARN("\n%s:%d - %s", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
+        LOG_WARN("%s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);
     }
     if(config_loaded) {
         // get the value of recv_port
         if(config_lookup_int(&cfg, "recv_port", &recv_port_conf)) {
-            LOG_DEBUG("\nrecv_port: %d\n", recv_port_conf);
+            LOG_DEBUG("recv_port: %d\n", recv_port_conf);
             thiz->recv_port = recv_port_conf;
         } else {
-            LOG_DEBUG("\nNo 'recv_port' setting in configuration file.");
+            LOG_DEBUG("No 'recv_port' setting in configuration file.\n");
         }
         // get the value of num_workers
         if(config_lookup_int(&cfg, "num_workers", &num_workers_conf)) {
-            LOG_DEBUG("\nnum_workers: %d\n", num_workers_conf);
+            LOG_DEBUG("num_workers: %d\n", num_workers_conf);
             thiz->num_workers = num_workers_conf;
         } else {
-            LOG_DEBUG("\nNo 'num_workers' setting in configuration file.");
+            LOG_DEBUG("No 'num_workers' setting in configuration file.\n");
         }
         // get the value of ip_rate_limit_max
         if(config_lookup_int(&cfg, "ip_rate_limit_max", &thiz->ip_rate_limit_max)) {
-            LOG_INFO("\nip_rate_limit_max: %d\n", thiz->ip_rate_limit_max);
+            LOG_INFO("ip_rate_limit_max: %d\n", thiz->ip_rate_limit_max);
             thiz->ip_rate_limit_max = thiz->ip_rate_limit_max;
         } else {
-            LOG_INFO("\nNo 'ip_rate_limit_max' setting in configuration file disabling.");
+            LOG_INFO("No 'ip_rate_limit_max' setting in configuration file disabling.\n");
         }
         // get the value of ip_rate_limit_period
         if(config_lookup_int(&cfg, "ip_rate_limit_period", &thiz->ip_rate_limit_period)) {
-            LOG_INFO("\nip_rate_limit_period: %d\n", thiz->ip_rate_limit_period);
+            LOG_INFO("ip_rate_limit_period: %d\n", thiz->ip_rate_limit_period);
             thiz->ip_rate_limit_period = thiz->ip_rate_limit_period;
         } else {
-            LOG_INFO("\nNo 'ip_rate_limit_period' setting in configuration file.");
+            LOG_INFO("No 'ip_rate_limit_period' setting in configuration file.\n");
         }
         // get the value of ip_rate_limit_prune_mark
         if(config_lookup_int(&cfg, "ip_rate_limit_prune_mark", &thiz->ip_rate_limit_prune_mark)) {
-            LOG_INFO("\nip_rate_limit_period: %d\n", thiz->ip_rate_limit_prune_mark);
+            LOG_INFO("ip_rate_limit_period: %d\n", thiz->ip_rate_limit_prune_mark);
             thiz->ip_rate_limit_prune_mark = thiz->ip_rate_limit_prune_mark;
         } else {
-            LOG_INFO("\nNo 'ip_rate_limit_prune_mark' setting in configuration file.");
+            LOG_INFO("No 'ip_rate_limit_prune_mark' setting in configuration file.\n");
         }
         config_setting_t *filters = config_lookup(&cfg, "filters");
         int filterIdx = 0;
@@ -109,8 +110,8 @@ void init_config(tesr_config_t *thiz, int argc, char **argv) {
                 LOG_DEBUG("we have a filter\n");
                 const char *sz_filter = config_setting_get_string(filter);
                 if(sz_filter) {
-                    tesr_filter_t *element = (tesr_filter_t *)malloc(sizeof(tesr_filter_t));
-                    strncpy(element->filter, sz_filter, INET_ADDRSTRLEN);
+                    tesr_filter_t *element = create_filter();
+                    init_filter(element, sz_filter);
                     LL_PREPEND(thiz->filters, element);
                     LOG_DEBUG("filter=%s\n", sz_filter);
                 }
@@ -181,6 +182,8 @@ void init_config(tesr_config_t *thiz, int argc, char **argv) {
 
 void destroy_config(tesr_config_t *thiz) {
     if(thiz) {
+        destroy_filters_list(thiz->filters);
+        TESR_LOG_FREE(thiz, tesr_config_t);
         free(thiz);
         thiz = NULL;
     } else {

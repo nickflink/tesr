@@ -13,13 +13,13 @@
 #include <utlist.h>
 
 //worker_thread_t *me = NULL;
-static worker_thread_t *worker_threads = NULL;
+static worker_thread_t **worker_threads = NULL;
 static int num_threads = 0;
 
 worker_thread_t *get_worker_thread(int idx) {
     worker_thread_t *worker_thread = NULL;
     if(worker_threads && 0 <= idx && idx < num_threads) {
-        worker_thread = &worker_threads[idx];
+        worker_thread = worker_threads[idx];
     }
     return worker_thread;
 }
@@ -61,16 +61,36 @@ static void inbox_cb_w(EV_P_ ev_io *w, int revents) {
     }
 }
 
-worker_thread_t *create_workers(int num) {
+worker_thread_t **create_workers(int num) {
     LOG_LOC;
     if(worker_threads == NULL) {
         num_threads = num;
-        worker_threads = (worker_thread_t*)malloc(num*sizeof(worker_thread_t));
+        worker_threads = (worker_thread_t**)malloc(num*sizeof(worker_thread_t*));
+        TESR_LOG_ALLOC(worker_threads, worker_thread_t[]);
     } else {
         LOG_ERROR("cant create workers more than once");
     }
     return worker_threads;
 }
+
+void destroy_workers() {
+    if(worker_threads) {
+        num_threads = 0;
+        TESR_LOG_FREE(worker_threads, worker_thread_t[]);
+        free(worker_threads);
+        worker_threads = NULL;
+    } else {
+        LOG_ERROR("can not free worker_threads ** as it is NULL\n");
+    }
+}
+
+worker_thread_t *create_worker() {
+    worker_thread_t *thiz = NULL;
+    thiz = (worker_thread_t*)malloc(sizeof(worker_thread_t));
+    TESR_LOG_ALLOC(thiz, worker_thread_t);
+    return thiz;
+}
+
 void* worker_thread_run(void* args) {
     LOG_LOC;
     LOG_INFO("[TID] 0x%zx %s\n", (size_t)pthread_self(), __FUNCTION__);
@@ -86,16 +106,8 @@ void init_worker(worker_thread_t *thiz, supervisor_thread_t *supervisor_thread, 
     LOG_LOC;
     thiz->idx = idx;
     //thiz->main_thread = main_thread;
-    thiz->filters = NULL;
-    tesr_filter_t *filter = NULL;
-    tesr_filter_t *cpfilter = NULL;
     //TODO: This should probably live in the ratelimiter
-    LL_FOREACH(supervisor_thread->config->filters, filter) {
-        LOG_DEBUG("Prepend> %s\n", filter->filter);
-        cpfilter = (tesr_filter_t*)malloc(sizeof(tesr_filter_t));
-        cpfilter = memcpy(cpfilter, filter, sizeof(tesr_filter_t));
-        LL_PREPEND(thiz->filters, cpfilter);
-    }
+    thiz->filters = copy_filters_list(supervisor_thread->config->filters);
     thiz->rate_limiter = supervisor_thread->rate_limiter;
     thiz->queue = create_queue();
     init_queue(thiz->queue);
@@ -105,6 +117,9 @@ void init_worker(worker_thread_t *thiz, supervisor_thread_t *supervisor_thread, 
 }
 void destroy_worker(worker_thread_t *thiz) {
     if(thiz) {
+        destroy_queue(thiz->queue);
+        destroy_filters_list(thiz->filters);
+        TESR_LOG_FREE(thiz, worker_thread_t);
         free(thiz);
         thiz = NULL;
     } else {
@@ -113,17 +128,6 @@ void destroy_worker(worker_thread_t *thiz) {
 }
 void log_worker(worker_thread_t *thiz) {
     LOG_INFO("worker_thread[%d] => 0x%zx\n", thiz->idx, (size_t)pthread_self());
-}
-void destroy_workers() {
-    LOG_LOC;
-    if(worker_threads) {
-        //destroy filters
-        free(worker_threads);
-        num_threads = 0;
-        worker_threads = NULL;
-    } else {
-        LOG_ERROR("no workers to destroy");
-    }
 }
 
 const char * get_thread_string() {

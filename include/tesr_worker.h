@@ -7,7 +7,9 @@
 #include <tesr_config.h>
 #include <tesr_rate_limiter.h>
 #include "tesr_types.h"
-worker_thread_t *create_workers(int num);
+worker_thread_t **create_workers(int num);
+void destroy_workers();
+worker_thread_t *create_worker();
 void init_worker(worker_thread_t *thiz, supervisor_thread_t *supervisor_thread, int idx);
 void destroy_worker(worker_thread_t *thiz);
 void log_worker(worker_thread_t *thiz);

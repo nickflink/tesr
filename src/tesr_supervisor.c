@@ -32,10 +32,10 @@ static void sigint_cb (struct ev_loop *loop, struct ev_signal *w, int revents) {
         ev_io_stop(thiz->event_loop, &thiz->udp_read_watcher);
         int th = 0;
         for(th = 0; th < thiz->config->num_workers; th++) {
-            if (write(thiz->worker_threads[th].ext_fd, &kill_pill, len) != len) {
+            if (write(thiz->worker_threads[th]->ext_fd, &kill_pill, len) != len) {
                 LOG_ERROR("Fail to writing to connection notify pipe\n");
             }
-            pthread_join(thiz->worker_threads[th].thread, NULL);
+            pthread_join(thiz->worker_threads[th]->thread, NULL);
             LOG_ERROR("{%s} JOINED\n", get_thread_string());
         }
         //ev_unloop(supervisor_thread->event_loop, EVUNLOOP_ONE);
@@ -53,8 +53,8 @@ static void udp_read_cb(EV_P_ ev_io *w, int revents) {
     supervisor_thread_t *thiz = get_supervisor_thread();
     if(thiz) {
         int th = thiz->next_thread_idx;
-        queue_data_t *data = create_queue_data();//TODO(nick): is this ever destroyed
-        //worker_data_t *data = ((worker_data_t *)malloc(sizeof(worker_data_t)));
+        queue_data_t *data = create_queue_data();
+        //TODO(nick): this should be in init_queue_data
         data->addr_len = sizeof(struct sockaddr_in);
         data->bytes = recvfrom(thiz->sd, data->buffer, sizeof(data->buffer) - 1, 0, (struct sockaddr*) &data->addr, (socklen_t *) &data->addr_len);
         data->worker_idx = th;
@@ -68,9 +68,9 @@ static void udp_read_cb(EV_P_ ev_io *w, int revents) {
                 }
             }
         } else {
-            tesr_enqueue(thiz->worker_threads[th].queue, data, get_thread_string());
+            tesr_enqueue(thiz->worker_threads[th]->queue, data, get_thread_string());
             LOG_DEBUG("{%s} SENDING NOTIFY MainThread => WorkThread[%d]\n", get_thread_string(), th);
-            if (write(thiz->worker_threads[th].ext_fd, &data->worker_idx, len) != len) {
+            if (write(thiz->worker_threads[th]->ext_fd, &data->worker_idx, len) != len) {
                 LOG_ERROR("Fail to writing to connection notify pipe\n");
             }
             if(++thiz->next_thread_idx >= thiz->config->num_workers) {
@@ -103,6 +103,7 @@ static void udp_write_cb(EV_P_ ev_io *w, int revents) {
 supervisor_thread_t *create_supervisor_instance() {
     supervisor_thread_t *thiz = NULL;
     thiz = (supervisor_thread_t*)malloc(sizeof(supervisor_thread_t));
+    TESR_LOG_ALLOC(thiz, supervisor_thread_t);
     supervisor_thread_instance = thiz;
     return thiz;
 }
@@ -134,10 +135,11 @@ int init_supervisor(supervisor_thread_t *thiz, tesr_config_t *config) {
             //We must initialize workers last as we pass the supervisor data to them
             int th=0;
             for(th=0; th < thiz->config->num_workers; th++) {
-                init_worker(&thiz->worker_threads[th], thiz, th);
+                thiz->worker_threads[th] = create_worker();
+                init_worker(thiz->worker_threads[th], thiz, th);
                 pthread_attr_t attr;
                 pthread_attr_init(&attr);
-                pthread_create(&thiz->worker_threads[th].thread, &attr, worker_thread_run, &thiz->worker_threads[th]);
+                pthread_create(&thiz->worker_threads[th]->thread, &attr, worker_thread_run, thiz->worker_threads[th]);
             }
             ev_io_init(&thiz->udp_read_watcher, udp_read_cb, thiz->sd, EV_READ);
             ev_io_init(&thiz->inbox_watcher, udp_write_cb, thiz->int_fd, EV_READ);
@@ -153,12 +155,14 @@ void destroy_supervisor(supervisor_thread_t *thiz) {
     if(thiz) {
         int w = 0;
         for(w = 0; w < thiz->config->num_workers; w++) {
-            destroy_worker(&thiz->worker_threads[w]);
+            destroy_worker(thiz->worker_threads[w]);
         }
         thiz->worker_threads = NULL;
         destroy_rate_limiter(thiz->rate_limiter);
         destroy_queue(thiz->queue);
         destroy_config(thiz->config);
+        destroy_workers();
+        TESR_LOG_FREE(thiz, supervisor_thread_t);
         free(thiz);
         thiz = NULL;
     } else {
