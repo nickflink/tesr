@@ -15,6 +15,7 @@ typedef struct tesr_filter_t {
 } tesr_filter_t;
 
 typedef struct tesr_config_t {
+    int daemonize;
     int recv_port;
     int ip_rate_limit_max;
     int ip_rate_limit_period;

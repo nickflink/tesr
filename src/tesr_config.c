@@ -25,6 +25,7 @@ void init_config(tesr_config_t *thiz, int argc, char **argv) {
     // DEFAULTS
     //
     int config_err = CONFIG_ERR_NONE;
+    thiz->daemonize = 0;
     thiz->recv_port = DEFAULT_RECV_PORT;
     thiz->ip_rate_limit_max = DEFAULT_IP_RATE_LIMIT_MAX;
     thiz->ip_rate_limit_period = DEFAULT_IP_RATE_LIMIT_PERIOD;
@@ -129,14 +130,18 @@ void init_config(tesr_config_t *thiz, int argc, char **argv) {
             {"port",    required_argument, 0, 'p'},
             {"workers", required_argument, 0, 'w'},
             {"help",    no_argument, 0, 'h'},
+            {"daemon",    no_argument, 0, 'd'},
             {0,         0,                 0,  0 }
         };
-        c = getopt_long(argc, argv, "p:w:", long_options, &option_index);
+        c = getopt_long(argc, argv, "p:w:dh", long_options, &option_index);
         if (c == -1)
             break;
         switch (c) {
         case 'h':
             config_err = CONFIG_ERR_HELP_REQUESTED;
+            break;
+        case 'd':
+            thiz->daemonize = 1;
             break;
         case 'p':
             recv_port_arg = atoi(optarg);
