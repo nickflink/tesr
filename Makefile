@@ -1,3 +1,4 @@
+VERSION="1.0"
 ifndef LOG_LEVEL
 LOG_LEVEL=3 #INFO
 endif
@@ -32,6 +33,29 @@ CLASSES = EchoBlast.java
 all: bin/tesr $(CLASSES:.java=.class)
 
 EchoBlast: $(CLASSES:.java=.class)
+
+.PHONY: package
+package: all
+	fpm -s dir \
+	-t deb \
+	--name tesr \
+	--force \
+	--license "GPL License" \
+	--version ${VERSION} \
+	--before-install ./pack-scripts/preinst \
+	--after-install ./pack-scripts/postinst \
+	--before-remove ./pack-scripts/prerm \
+	--after-remove ./pack-scripts/postrm \
+	--url "https://github.com/nickflink/udp_net_check" \
+	--description "Threaded Echo ServeR echos timestamp uses libev to echo udp timestamp strings using filters and ratelimiting" \
+	--depends "libconfig8" \
+	--depends "libev4" \
+	--depends "libpthread-stubs0" \
+	--directories /var/run/tesr \
+	--config-files /etc/tesr.conf \
+	./bin/tesr=/usr/sbin/tesr \
+	./etc/init.d/tesr.sh=/etc/init.d/tesr.sh \
+	./etc/tesr.conf=/etc/tesr.conf
 
 clean:
 	$(RM) $(OBJ_DIR)/* $(BIN_DIR)/* *.class

@@ -7,6 +7,7 @@ EchoBlast client with producer consumer pattern written in java
 
 ## Build
 ```bash
+./configure
 make
 ```
 builds everying that you need

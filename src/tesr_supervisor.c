@@ -118,7 +118,8 @@ int init_supervisor(supervisor_thread_t *thiz, tesr_config_t *config) {
         }
         ret = bind_dgram_socket(&thiz->sd, &thiz->addr, thiz->config->recv_port);
         if (ret == 0) {
-            LOG_ERROR("could not bind dgram socket");
+            LOG_ERROR("could not bind dgram socket\n");
+            exit(EXIT_FAILURE);
         } else {
             thiz->queue = create_queue();
             init_queue(thiz->queue);

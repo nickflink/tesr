@@ -1,0 +1,20 @@
+#!/bin/sh
+case "$1" in
+    configure)
+        echo "adding user tesr"
+        getent passwd tesr > /dev/null || \
+            adduser --quiet --system --home /var/lib/tesr  --no-create-home \
+            --gecos 'Threaded Echo ServeR' --group tesr
+        ;;
+    failed-upgrade|abort-upgrade|abort-remove|abort-deconfigure|in-favour|removing)
+        ;;
+
+    *)
+        echo "`basename $0` called with unknown argument \`$1'" >&2;
+        exit 1;
+        ;;
+esac
+echo "chowning files"
+chown tesr:tesr /etc/tesr.conf
+chown tesr:tesr /etc/init.d/tesr.sh
+chown -R tesr:tesr /var/run/tesr

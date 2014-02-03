@@ -1,0 +1,12 @@
+#!/bin/sh
+case "$1" in
+    remove)
+        /etc/init.d/tesr.sh stop
+    ;;
+    upgrade|in-favor|upgradenew-version)
+    ;;
+    *)
+        echo "`basename $0` called with unknown argument \`$1'" >&2;
+        exit 1;
+        ;;
+esac

@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 
 
 public class EchoBlast extends Thread {
-    private static final int PORT_NUM = 1989;
+    private static final int PORT_NUM = 2007;
     private static final int NUM_PACKETS = 50;
     private static final int ECHO_BLAST_TIME_LIMIT = 500;
 

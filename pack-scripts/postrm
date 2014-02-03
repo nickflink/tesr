@@ -1,0 +1,13 @@
+#!/bin/sh
+case "$1" in
+    purge)
+        echo "Removing system user 'tesr'..."
+        deluser --remove-home tesr >/dev/null 2>&1 || true
+        ;;
+    remove|purge|upgrade|disappearer|failed-upgrade|abort-install|abort-install|abort-upgrade)
+        ;;
+    *)
+        echo "`basename $0` called with unknown argument \`$1'" >&2;
+        exit 1;
+        ;;
+esac
