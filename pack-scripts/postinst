@@ -16,5 +16,5 @@ case "$1" in
 esac
 echo "chowning files"
 chown tesr:tesr /etc/tesr.conf
-chown tesr:tesr /etc/init.d/tesr.sh
+chown tesr:tesr /etc/init.d/tesr
 chown -R tesr:tesr /var/run/tesr

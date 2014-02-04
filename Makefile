@@ -42,7 +42,6 @@ package: all
 	--force \
 	--license "GPL License" \
 	--version ${VERSION} \
-	--before-install ./pack-scripts/preinst \
 	--after-install ./pack-scripts/postinst \
 	--before-remove ./pack-scripts/prerm \
 	--after-remove ./pack-scripts/postrm \

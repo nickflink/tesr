@@ -3,3 +3,13 @@ mkdir -p bin
 mkdir -p include
 mkdir -p src
 mkdir -p obj
+if [ "`which fpm`" == "" ]; then
+    echo "missing fpm please install"
+    echo "gem install fpm"
+fi
+if [ "`which dpkg`" == "" ]; then
+    echo "skipping {libconfig8,libev4} check as we do not have dpkg"
+else
+    if [ `dpkg -l libconfig8|grep -o -E "ii\s*libconfig8"` == "" ]; then echo "please run: sudo apt-get install libconfig8"; fi
+    if [ `dpkg -l libev4|grep -o -E "ii\s*libev4"` == "" ]; then echo "please run: sudo apt-get install libev4"; fi
+fi

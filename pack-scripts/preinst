@@ -1,2 +1,0 @@
-#!/bin/sh
-echo "nothing to be done for `basename $0` $*"
