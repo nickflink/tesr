@@ -28,7 +28,7 @@ ip_rate_limit_prune_mark = 0;
 make 
 ```
 ## Make Args
-```bash
+```
 make LINK_STATIC (to statically link all libraries)
 make LOG_LEVEL=0 (for silent builds)
 make LOG_LEVEL=1 (for only errors)
@@ -40,12 +40,12 @@ make LOG_LEVEL=5 (for errors, warnings, info, debug and verbose traces)
 
 ## Run
 ```bash
-shell#1$ ./bin/tesr -d -p 2007
+shell#1$ ./bin/tesr -p 2007
 shell#2$ java EchoBlast
 ```
 
 ## Args
-```bash
+```
 USAGE tesr [T]hreaded [E]cho [S]erve[R]
 -d (daemonize)
 -p --port (override the port)
