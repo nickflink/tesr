@@ -31,7 +31,7 @@ static int load_config_file(config_t* cfg, const char *file_name) {
 }
 
 static int int_from_config(config_t* cfg, int *dest, const char *name) {
-    int val = config_lookup_int(cfg, name, dest);
+    int val = 0;
     int success = config_lookup_int(cfg, name, &val);
     if(success) {
         *dest = val;
