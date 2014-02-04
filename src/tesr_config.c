@@ -171,6 +171,7 @@ void init_config(tesr_config_t *thiz, int argc, char **argv) {
         //We can exit like this when checking the config as it is only checked in the beginning
         LOG_ERROR("\
 \nUSAGE tesr [T]hreaded [E]cho [S]erve[R]\
+\n-d (daemonize)\
 \n-p --port (override the port)\
 \n-w --workers (override the number of workers)\
 \n");
