@@ -51,7 +51,6 @@ typedef struct queue_data_t {
 typedef struct tesr_queue_t {
     queue_data_t *queue;
     pthread_mutex_t mutex;
-    pthread_cond_t cond;
     struct queue_data_t *next;
 } tesr_queue_t;
 

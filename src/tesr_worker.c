@@ -36,7 +36,6 @@ static void inbox_cb_w(EV_P_ ev_io *w, int revents) {
             LOG_ERROR("Can't read from connection notify pipe\n");
             LOG_INFO("[KO] ret = %d != %d len\n", ret, (int)len);
         } if(idx < 0) {
-            //ev_unloop(EV_A_, EVUNLOOP_ALL);
             LOG_DEBUG("{%s} RECVING KILL_PILL MainThread => WorkThread[?]\n", get_thread_string());
             ev_unloop(EV_A_ EVUNLOOP_ALL);
         } else {
@@ -61,7 +60,7 @@ static void inbox_cb_w(EV_P_ ev_io *w, int revents) {
     }
 }
 
-worker_thread_t **create_workers(int num) {
+worker_thread_t **create_worker_array(int num) {
     LOG_LOC;
     if(worker_threads == NULL) {
         num_threads = num;
@@ -73,7 +72,7 @@ worker_thread_t **create_workers(int num) {
     return worker_threads;
 }
 
-void destroy_workers() {
+void destroy_worker_array() {
     if(worker_threads) {
         num_threads = 0;
         TESR_LOG_FREE(worker_threads, worker_thread_t[]);

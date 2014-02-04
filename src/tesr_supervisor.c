@@ -132,7 +132,7 @@ int init_supervisor(supervisor_thread_t *thiz, tesr_config_t *config) {
 
             //Initialize pthread
             thiz->next_thread_idx = 0;
-            thiz->worker_threads = create_workers(thiz->config->num_workers);
+            thiz->worker_threads = create_worker_array(thiz->config->num_workers);
             //We must initialize workers last as we pass the supervisor data to them
             int th=0;
             for(th=0; th < thiz->config->num_workers; th++) {
@@ -162,7 +162,7 @@ void destroy_supervisor(supervisor_thread_t *thiz) {
         destroy_rate_limiter(thiz->rate_limiter);
         destroy_queue(thiz->queue);
         destroy_config(thiz->config);
-        destroy_workers();
+        destroy_worker_array();
         TESR_LOG_FREE(thiz, supervisor_thread_t);
         free(thiz);
         thiz = NULL;

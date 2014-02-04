@@ -20,11 +20,55 @@ tesr_config_t *create_config() {
     return thiz;
 }
 
-void init_config(tesr_config_t *thiz, int argc, char **argv) {
+static int load_config_file(config_t* cfg, const char *file_name) {
+    int config_loaded = config_read_file(cfg, file_name);
+    if(config_loaded) {
+        LOG_INFO("using config %s\n", file_name);
+    } else {
+        LOG_INFO("no config found at %s\n", file_name);
+    }
+    return config_loaded;
+}
+
+static int int_from_config(config_t* cfg, int *dest, const char *name) {
+    int val = config_lookup_int(cfg, name, dest);
+    int success = config_lookup_int(cfg, name, &val);
+    if(success) {
+        *dest = val;
+        LOG_DEBUG("%s: %d\n", name, val);
+    } else {
+        LOG_DEBUG("No '%s' setting in configuration file.\n", name);
+    }
+    return success;
+}
+
+static int filters_from_config(config_t* cfg, tesr_filter_t *list) {
+    int success = 0;
+    config_setting_t *filters = config_lookup(cfg, "filters");
+    int filterIdx = 0;
+    if(filters) {
+        LOG_DEBUG("we have filters\n");
+        config_setting_t *filter = config_setting_get_elem(filters, filterIdx++);
+        while(filter) {
+            LOG_DEBUG("we have a filter\n");
+            const char *sz_filter = config_setting_get_string(filter);
+            if(sz_filter) {
+                tesr_filter_t *element = create_filter();
+                init_filter(element, sz_filter);
+                LL_PREPEND(list, element);
+                LOG_DEBUG("filter=%s\n", sz_filter);
+                success = 1;
+            }
+            filter = config_setting_get_elem(filters, filterIdx++);
+        }
+    }
+    return success;
+}
+
+static void init_config_from_defaults(tesr_config_t *thiz) {
     //
     // DEFAULTS
     //
-    int config_err = CONFIG_ERR_NONE;
     thiz->daemonize = 0;
     thiz->recv_port = DEFAULT_RECV_PORT;
     thiz->ip_rate_limit_max = DEFAULT_IP_RATE_LIMIT_MAX;
@@ -32,97 +76,41 @@ void init_config(tesr_config_t *thiz, int argc, char **argv) {
     thiz->ip_rate_limit_prune_mark = DEFAULT_IP_RATE_LIMIT_PRUNE_MARK;
     thiz->num_workers = 0;
     thiz->filters = NULL;
-    int recv_port_conf = 0;
-    int recv_port_arg = 0;
-    int num_workers_conf = 0;
-    int num_workers_arg = 0;
+}
+
+static int override_config_from_file(tesr_config_t *thiz) {
     //
     // Configuration File
     //
-    config_t cfg;
-    char *local_config_file_name = "./tesr.conf";
-    char *system_config_file_name = "/etc/tesr.conf";
     //Initialization
+    config_t cfg;
     config_init(&cfg);
-    int config_loaded = 0;
-    /* Read the file. If there is an error, report it and exit. */
+    //Try local first
+    int config_loaded = load_config_file(&cfg, "./tesr.conf");
     if(!config_loaded) {
-        config_loaded = config_read_file(&cfg, local_config_file_name);
-        if(config_loaded) {
-        LOG_INFO("using config %s\n", local_config_file_name);
-    } else {
-        LOG_INFO("no local config found at %s\n", local_config_file_name);
-    }
-    }
-    if(!config_loaded) {
-        config_loaded = config_read_file(&cfg, system_config_file_name);
-        if(config_loaded) {
-            LOG_INFO("using config %s\n", system_config_file_name);
-        } else {
-            LOG_INFO("no system config found at %s\n", system_config_file_name);
-        }
-    }
-    if(!config_loaded) {
-        LOG_WARN("%s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
-        config_destroy(&cfg);
+        //Try sytem second
+        config_loaded = load_config_file(&cfg, "/etc/tesr.conf");
     }
     if(config_loaded) {
-        // get the value of recv_port
-        if(config_lookup_int(&cfg, "recv_port", &recv_port_conf)) {
-            LOG_DEBUG("recv_port: %d\n", recv_port_conf);
-            thiz->recv_port = recv_port_conf;
-        } else {
-            LOG_DEBUG("No 'recv_port' setting in configuration file.\n");
-        }
-        // get the value of num_workers
-        if(config_lookup_int(&cfg, "num_workers", &num_workers_conf)) {
-            LOG_DEBUG("num_workers: %d\n", num_workers_conf);
-            thiz->num_workers = num_workers_conf;
-        } else {
-            LOG_DEBUG("No 'num_workers' setting in configuration file.\n");
-        }
-        // get the value of ip_rate_limit_max
-        if(config_lookup_int(&cfg, "ip_rate_limit_max", &thiz->ip_rate_limit_max)) {
-            LOG_INFO("ip_rate_limit_max: %d\n", thiz->ip_rate_limit_max);
-            thiz->ip_rate_limit_max = thiz->ip_rate_limit_max;
-        } else {
-            LOG_INFO("No 'ip_rate_limit_max' setting in configuration file disabling.\n");
-        }
-        // get the value of ip_rate_limit_period
-        if(config_lookup_int(&cfg, "ip_rate_limit_period", &thiz->ip_rate_limit_period)) {
-            LOG_INFO("ip_rate_limit_period: %d\n", thiz->ip_rate_limit_period);
-            thiz->ip_rate_limit_period = thiz->ip_rate_limit_period;
-        } else {
-            LOG_INFO("No 'ip_rate_limit_period' setting in configuration file.\n");
-        }
-        // get the value of ip_rate_limit_prune_mark
-        if(config_lookup_int(&cfg, "ip_rate_limit_prune_mark", &thiz->ip_rate_limit_prune_mark)) {
-            LOG_INFO("ip_rate_limit_period: %d\n", thiz->ip_rate_limit_prune_mark);
-            thiz->ip_rate_limit_prune_mark = thiz->ip_rate_limit_prune_mark;
-        } else {
-            LOG_INFO("No 'ip_rate_limit_prune_mark' setting in configuration file.\n");
-        }
-        config_setting_t *filters = config_lookup(&cfg, "filters");
-        int filterIdx = 0;
-        if(filters) {
-            LOG_DEBUG("we have filters\n");
-            config_setting_t *filter = config_setting_get_elem(filters, filterIdx++);
-            while(filter) {
-                LOG_DEBUG("we have a filter\n");
-                const char *sz_filter = config_setting_get_string(filter);
-                if(sz_filter) {
-                    tesr_filter_t *element = create_filter();
-                    init_filter(element, sz_filter);
-                    LL_PREPEND(thiz->filters, element);
-                    LOG_DEBUG("filter=%s\n", sz_filter);
-                }
-                filter = config_setting_get_elem(filters, filterIdx++);
-            }
-        }
+        int_from_config(&cfg, &thiz->recv_port, "recv_port");
+        int_from_config(&cfg, &thiz->num_workers, "num_workers");
+        int_from_config(&cfg, &thiz->ip_rate_limit_max, "ip_rate_limit_max");
+        int_from_config(&cfg, &thiz->ip_rate_limit_period, "ip_rate_limit_period");
+        int_from_config(&cfg, &thiz->ip_rate_limit_prune_mark, "ip_rate_limit_prune_mark");
+        filters_from_config(&cfg, thiz->filters);
+    } else {
+        LOG_WARN("running without a config file\n");
+        LOG_DEBUG("File:%s Line:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
     }
+    config_destroy(&cfg);
+    return config_loaded;
+}
+
+static int override_config_from_args(tesr_config_t *thiz, int argc, char **argv) {
     //
     // OptArg Overrides
     //
+    int config_err = CONFIG_ERR_NONE;
     int c;
     while (1) {
         int option_index = 0;
@@ -144,19 +132,17 @@ void init_config(tesr_config_t *thiz, int argc, char **argv) {
             thiz->daemonize = 1;
             break;
         case 'p':
-            recv_port_arg = atoi(optarg);
-            if(recv_port_arg == 0) {
+            thiz->recv_port = atoi(optarg);
+            if(thiz->recv_port == 0) {
                 LOG_ERROR("[KO] non-numeric port '%s'", optarg);
                 config_err = CONFIG_ERR_NON_NUMERIC_ARG;
             } else {
-                LOG_DEBUG("command line port = %d\n", recv_port_arg);
-                thiz->recv_port = recv_port_arg;
+                LOG_DEBUG("command line port = %d\n", thiz->recv_port);
             }
             break;
         case 'w':
-            num_workers_arg = atoi(optarg);
-            LOG_DEBUG("command line workers = %d\n", num_workers_arg);
-            thiz->num_workers = num_workers_arg;
+            thiz->num_workers = atoi(optarg);
+            LOG_DEBUG("command line workers = %d\n", thiz->num_workers);
             break;
         case '?':
             config_err = CONFIG_ERR_INVALID_CMD_LINE_OPTION;
@@ -174,6 +160,13 @@ void init_config(tesr_config_t *thiz, int argc, char **argv) {
         LOG_ERROR("\n");
         config_err = CONFIG_ERR_UNPARSED_CMD_LINE_OPTION;
     }
+    return config_err;
+}
+
+void init_config(tesr_config_t *thiz, int argc, char **argv) {
+    init_config_from_defaults(thiz);
+    override_config_from_file(thiz);
+    int config_err = override_config_from_args(thiz, argc, argv);
     if(config_err) {
         //We can exit like this when checking the config as it is only checked in the beginning
         LOG_ERROR("\

@@ -87,12 +87,8 @@ int should_echo(char *buffer, socklen_t bytes, struct sockaddr_in *addr, tesr_fi
         char ip[INET_ADDRSTRLEN];
         inet_ntop(addr->sin_family, &addr->sin_addr, ip, INET_ADDRSTRLEN);
         LOG_DEBUG("should_echo:%s from:%s:%d\n", buffer, ip, ntohs(addr->sin_port));
-        if(is_correctly_formatted(buffer)) {
-            if(passes_filters(ip, filters)) {
-                if(is_under_rate_limit(rate_limiter, ip)) {
-                    ret = 1;
-                }
-            }
+        if(is_correctly_formatted(buffer) && passes_filters(ip, filters) && is_under_rate_limit(rate_limiter, ip)) {
+            ret = 1;
         }
     }
     return ret;
