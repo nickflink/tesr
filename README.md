@@ -28,15 +28,15 @@ ip_rate_limit_prune_mark = 0;
 make 
 ```
 ## Make Args
+```bash
+make LINK_STATIC (to statically link all libraries)
 make LOG_LEVEL=0 (for silent builds)
 make LOG_LEVEL=1 (for only errors)
 make LOG_LEVEL=2 (for errors and warnings)
-make LOG_LEVEL=3 (default: for errors, warnings and info)
-make LOG_LEVEL=4 (default: for errors, warnings, info and debug)
-make LOG_LEVEL=5 (default: for errors, warnings, info, debug and verbose traces)
-make LINK_STATIC (to statically link all libraries)
-
-builds everying that you need
+make LOG_LEVEL=3 (**default**: for errors, warnings and info)
+make LOG_LEVEL=4 (for errors, warnings, info and debug)
+make LOG_LEVEL=5 (for errors, warnings, info, debug and verbose traces)
+```
 
 ## Run
 ```bash
@@ -53,7 +53,7 @@ USAGE tesr [T]hreaded [E]cho [S]erve[R]
 ```
 
 ## Package Debian Only
-We use fpm documented here https://github.com/jordansissel/fpm/wiki
+*We use fpm documented here https://github.com/jordansissel/fpm/wiki*
 ```bash
 gem install fpm
 make package
