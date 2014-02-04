@@ -53,7 +53,7 @@ package: all
 	--directories /var/run/tesr \
 	--config-files /etc/tesr.conf \
 	./bin/tesr=/usr/sbin/tesr \
-	./etc/init.d/tesr.sh=/etc/init.d/tesr.sh \
+	./etc/init.d/tesr=/etc/init.d/tesr \
 	./etc/tesr.conf=/etc/tesr.conf
 
 clean:
