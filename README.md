@@ -2,17 +2,23 @@
 Tools for checking udp throughput on networks
 
 ## Components
-Simple echo server with rate limiting written in c using libev <br>
-EchoBlast client with producer consumer pattern written in java
+* Simple echo server with rate limiting written in c using libev
+* EchoBlast client with producer consumer pattern written in java
+
+## Features
+* scalable multithreaded design using libev
+* deb package creation
+* configurably filter blacklisted IP RegEx's 
+* ratelimit source ips over time
 
 ## Conf
 ```
-#udp echo server
+# Threaded Echo ServeR (tesr)
 recv_port = 2007;
 # how many worker to use
 num_workers = 0;
-# put any blacklisted ips in the below list
-# this should at the very least contain each of the turn servers
+# this is a list containing regular expressions
+# any ip match will be blacklisted
 filters = ["0.0.0.0"];
 # the maximum packages to allow before discontinuing echo to that ip
 # use ip_rate_limit_max = 0 to disable rate limiting
