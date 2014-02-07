@@ -6,7 +6,7 @@ BIN_DIR = ./bin
 INC_DIR = ./include
 SRC_DIR = ./src
 OBJ_DIR = ./obj
-CC_FLAGS = -Wall -Werror
+CC_FLAGS = 
 CC_MACROS = -DLOG_LEVEL=$(LOG_LEVEL)
 CC_LIBS = -lev -lconfig -lpthread
 ifdef LINK_STATIC
