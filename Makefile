@@ -47,7 +47,7 @@ package: all
 	--after-remove ./pack-scripts/postrm \
 	--url "https://github.com/nickflink/udp_net_check" \
 	--description "Threaded Echo ServeR echos timestamp uses libev to echo udp timestamp strings using filters and ratelimiting" \
-	--depends "libconfig8" \
+	--depends "libconfig9" \
 	--depends "libev4" \
 	--depends "libpthread-stubs0" \
 	--directories /var/run/tesr \
