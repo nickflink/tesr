@@ -42,7 +42,7 @@ int is_correctly_formatted(char *buffer) {
         if(endptr == NULL) {
             endptr = "NULL";
         }
-        LOG_INFO("[KO] stroll(%s, %s, %d) = %llu", buffer, endptr, base, echo);
+        LOG_INFO("[KO] incorrectly formatted payload stroll(%s, %s, %d) = %llu", buffer, endptr, base, echo);
     }
     return ret;
 }
@@ -62,7 +62,7 @@ int passes_filters(char *ip, tesr_filter_t *filters) {
             // Ete regular expression
             reti = regexec(&regex, ip, 0, NULL, 0);
             if( !reti ) {
-                LOG_DEBUG("[KO] Filtered Out By %s!\n", element->filter);
+                LOG_INFO("[KO] %s, Filtered Out By %s!\n", ip, element->filter);
                 ret = 0;
                 break;
             } else if( reti == REG_NOMATCH ) {

@@ -79,7 +79,7 @@ int is_under_rate_limit(rate_limiter_t *rate_limiter, const char *ip) {
         }
         ++rl->count;
         if(rl->count > rate_limiter->ip_rate_limit_max) {
-            LOG_DEBUG("[KO] rl->count=%d > %d=rate_limiter->ip_rate_limit_max\n", rl->count, rate_limiter->ip_rate_limit_max);
+            LOG_INFO("[KO] rl->count=%d > %d=rate_limiter->ip_rate_limit_max\n", rl->count, rate_limiter->ip_rate_limit_max);
             ret = 0;
         } else {
             LOG_DEBUG("[OK] rl->count=%d <= %d=rate_limiter->ip_rate_limit_max\n", rl->count, rate_limiter->ip_rate_limit_max);
