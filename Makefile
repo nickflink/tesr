@@ -1,4 +1,4 @@
-VERSION="1.2"
+VERSION="1.4"
 ifndef LOG_LEVEL
 LOG_LEVEL=3 #INFO
 endif
@@ -51,10 +51,10 @@ package: all
 	--depends "libev4" \
 	--depends "libpthread-stubs0" \
 	--directories /var/run/tesr \
-	--config-files /etc/tesr.conf \
+	--config-files /etc/tesr/tesr.conf \
 	./bin/tesr=/usr/sbin/tesr \
 	./etc/init.d/tesr=/etc/init.d/tesr \
-	./etc/tesr.conf=/etc/tesr.conf
+	./etc/tesr/tesr.conf=/etc/tesr/tesr.conf
 
 clean:
 	$(RM) $(OBJ_DIR)/* $(BIN_DIR)/* *.class
