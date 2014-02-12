@@ -1,4 +1,4 @@
-VERSION="1.0"
+VERSION="1.1"
 ifndef LOG_LEVEL
 LOG_LEVEL=3 #INFO
 endif
@@ -6,7 +6,7 @@ BIN_DIR = ./bin
 INC_DIR = ./include
 SRC_DIR = ./src
 OBJ_DIR = ./obj
-CC_FLAGS = -Wall -Werror
+CC_FLAGS =
 CC_MACROS = -DLOG_LEVEL=$(LOG_LEVEL)
 CC_LIBS = -lev -lconfig -lpthread
 ifdef LINK_STATIC
@@ -47,7 +47,7 @@ package: all
 	--after-remove ./pack-scripts/postrm \
 	--url "https://github.com/nickflink/udp_net_check" \
 	--description "Threaded Echo ServeR echos timestamp uses libev to echo udp timestamp strings using filters and ratelimiting" \
-	--depends "libconfig8" \
+	--depends "libconfig9" \
 	--depends "libev4" \
 	--depends "libpthread-stubs0" \
 	--directories /var/run/tesr \
