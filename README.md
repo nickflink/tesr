@@ -35,6 +35,7 @@ make
 ```
 ## Make Args
 ```
+make STRICT (to treat warnings as errors)
 make LINK_STATIC (to statically link all libraries)
 make LOG_LEVEL=0 (for silent builds)
 make LOG_LEVEL=1 (for only errors)

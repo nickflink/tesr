@@ -14,7 +14,3 @@ case "$1" in
         exit 1;
         ;;
 esac
-echo "chowning files"
-chown tesr:tesr /etc/tesr.conf
-chown tesr:tesr /etc/init.d/tesr
-chown -R tesr:tesr /var/run/tesr
