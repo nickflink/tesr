@@ -1,4 +1,4 @@
-VERSION="1.1"
+VERSION="1.2"
 ifndef LOG_LEVEL
 LOG_LEVEL=3 #INFO
 endif
