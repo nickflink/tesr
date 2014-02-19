@@ -12,26 +12,12 @@ Tools for checking udp throughput on networks
 * ratelimit source ips over time
 
 ## Conf
-```
-# Threaded Echo ServeR (tesr)
-recv_port = 2007;
-# how many worker to use
-num_workers = 0;
-# this is a list containing regular expressions
-# any ip match will be blacklisted
-filters = ["0.0.0.0"];
-# the maximum packages to allow before discontinuing echo to that ip
-# use ip_rate_limit_max = 0 to disable rate limiting
-ip_rate_limit_max = 1000;
-# the period in seconds of how long to wait before expiring the ip_rate_limit_max
-ip_rate_limit_period = 10;
-# the mark at which we trigger pruning of the rate_limits with expired periods
-ip_rate_limit_prune_mark = 0;
+[checkout the example tesr.conf link](etc/tesr.conf)
 ```
 ## Build
 ```bash
 ./configure
-make 
+make
 ```
 ## Make Args
 ```

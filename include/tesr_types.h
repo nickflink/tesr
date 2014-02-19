@@ -17,9 +17,9 @@ typedef struct tesr_filter_t {
 typedef struct tesr_config_t {
     int daemonize;
     int recv_port;
-    int ip_rate_limit_max;
-    int ip_rate_limit_period;
-    int ip_rate_limit_prune_mark;
+    int irl_max;
+    int irl_inactivity_timeout;
+    int irl_garbage_collect_count;
     int num_workers;
     tesr_filter_t *filters;
 } tesr_config_t;
@@ -34,9 +34,9 @@ typedef struct rate_limit_struct_t {
 typedef struct rate_limiter_t {
     rate_limit_struct_t *rate_limit_map;
     pthread_mutex_t lock;
-    int ip_rate_limit_max;
-    int ip_rate_limit_period;
-    int ip_rate_limit_prune_mark;
+    int irl_max;
+    int irl_inactivity_timeout;
+    int irl_garbage_collect_count;
 } rate_limiter_t;
 
 typedef struct queue_data_t {

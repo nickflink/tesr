@@ -71,9 +71,9 @@ static void init_config_from_defaults(tesr_config_t *thiz) {
     //
     thiz->daemonize = 0;
     thiz->recv_port = DEFAULT_RECV_PORT;
-    thiz->ip_rate_limit_max = DEFAULT_IP_RATE_LIMIT_MAX;
-    thiz->ip_rate_limit_period = DEFAULT_IP_RATE_LIMIT_PERIOD;
-    thiz->ip_rate_limit_prune_mark = DEFAULT_IP_RATE_LIMIT_PRUNE_MARK;
+    thiz->irl_max = DEFAULT_IP_RATE_LIMIT_MAX;
+    thiz->irl_inactivity_timeout = DEFAULT_IP_RATE_LIMIT_PERIOD;
+    thiz->irl_garbage_collect_count = DEFAULT_IP_RATE_LIMIT_PRUNE_MARK;
     thiz->num_workers = 0;
     thiz->filters = NULL;
 }
@@ -89,14 +89,14 @@ static int override_config_from_file(tesr_config_t *thiz) {
     int config_loaded = load_config_file(&cfg, "./tesr.conf");
     if(!config_loaded) {
         //Try sytem second
-        config_loaded = load_config_file(&cfg, "/etc/tesr/tesr.conf");
+        config_loaded = load_config_file(&cfg, "/etc/tesr.conf");
     }
     if(config_loaded) {
         int_from_config(&cfg, &thiz->recv_port, "recv_port");
         int_from_config(&cfg, &thiz->num_workers, "num_workers");
-        int_from_config(&cfg, &thiz->ip_rate_limit_max, "ip_rate_limit_max");
-        int_from_config(&cfg, &thiz->ip_rate_limit_period, "ip_rate_limit_period");
-        int_from_config(&cfg, &thiz->ip_rate_limit_prune_mark, "ip_rate_limit_prune_mark");
+        int_from_config(&cfg, &thiz->irl_max, "irl_max");
+        int_from_config(&cfg, &thiz->irl_inactivity_timeout, "irl_inactivity_timeout");
+        int_from_config(&cfg, &thiz->irl_garbage_collect_count, "irl_garbage_collect_count");
         filters_from_config(&cfg, thiz->filters);
     } else {
         LOG_WARN("running without a config file\n");

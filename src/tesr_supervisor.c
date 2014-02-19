@@ -128,7 +128,7 @@ int init_supervisor(supervisor_thread_t *thiz, tesr_config_t *config) {
             thiz->event_loop = EV_DEFAULT;  //or ev_default_loop (0);
             //Set up rate limiting
             thiz->rate_limiter = create_rate_limiter();
-            init_rate_limiter(thiz->rate_limiter, thiz->config->ip_rate_limit_max, thiz->config->ip_rate_limit_period, thiz->config->ip_rate_limit_prune_mark);
+            init_rate_limiter(thiz->rate_limiter, thiz->config->irl_max, thiz->config->irl_inactivity_timeout, thiz->config->irl_garbage_collect_count);
 
             //Initialize pthread
             thiz->next_thread_idx = 0;

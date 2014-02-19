@@ -16,12 +16,12 @@ rate_limiter_t *create_rate_limiter() {
     return thiz;
 }
 
-void init_rate_limiter(rate_limiter_t *rate_limiter, int ip_rate_limit_max, int ip_rate_limit_period, int ip_rate_limit_prune_mark) {
+void init_rate_limiter(rate_limiter_t *rate_limiter, int irl_max, int irl_inactivity_timeout, int irl_garbage_collect_count) {
     rate_limiter->rate_limit_map = NULL;
     pthread_mutex_init(&rate_limiter->lock, NULL);
-    rate_limiter->ip_rate_limit_max = ip_rate_limit_max;
-    rate_limiter->ip_rate_limit_period = ip_rate_limit_period;
-    rate_limiter->ip_rate_limit_prune_mark = ip_rate_limit_prune_mark;
+    rate_limiter->irl_max = irl_max;
+    rate_limiter->irl_inactivity_timeout = irl_inactivity_timeout;
+    rate_limiter->irl_garbage_collect_count = irl_garbage_collect_count;
 }
 
 void destroy_rate_limiter(rate_limiter_t *thiz) {
@@ -39,7 +39,7 @@ int prune_expired_ips(rate_limiter_t *rate_limiter) {
     LOG_DEBUG("LOCK prune_expired_ips thread = 0x%zx\n", (size_t)pthread_self());
     pthread_mutex_lock(&rate_limiter->lock);     //Don't forget locking
     LOG_DEBUG("LOCK AQUIRED prune_expired_ips thread = 0x%zx\n", (size_t)pthread_self());
-    if(rate_limiter && HASH_COUNT(rate_limiter->rate_limit_map) >= rate_limiter->ip_rate_limit_prune_mark) {
+    if(rate_limiter && HASH_COUNT(rate_limiter->rate_limit_map) >= rate_limiter->irl_garbage_collect_count) {
         rate_limit_struct_t *rl = NULL;
         rate_limit_struct_t *tmp = NULL;
         time_t now;
@@ -49,7 +49,7 @@ int prune_expired_ips(rate_limiter_t *rate_limiter) {
         HASH_ITER(hh, rate_limiter->rate_limit_map, rl, tmp) {
             time_elapsed = difftime(now,rl->last_check);
             LOG_DEBUG("rl{%s} = %d [%f]sec elapsed\n", rl->ip, rl->count, time_elapsed);
-            if(time_elapsed > rate_limiter->ip_rate_limit_period) {
+            if(time_elapsed > rate_limiter->irl_inactivity_timeout) {
                 HASH_DEL(rate_limiter->rate_limit_map, rl);  // delete; rate_limit_map advances to next
                 destroy_rate_limit(rl);
                 ++pruned;
@@ -65,7 +65,7 @@ int prune_expired_ips(rate_limiter_t *rate_limiter) {
 
 int is_under_rate_limit(rate_limiter_t *rate_limiter, const char *ip) {
     int ret = 1;
-    if(0 < rate_limiter->ip_rate_limit_max) {
+    if(0 < rate_limiter->irl_max) {
       LOG_DEBUG("LOCK is_under_rate_limit thread = 0x%zx\n", (size_t)pthread_self());
         pthread_mutex_lock(&rate_limiter->lock);     //Don't forget locking
         LOG_DEBUG("LOCK AQUIRED is_under_rate_limit thread = 0x%zx\n", (size_t)pthread_self());
@@ -78,11 +78,11 @@ int is_under_rate_limit(rate_limiter_t *rate_limiter, const char *ip) {
             HASH_ADD_STR( rate_limiter->rate_limit_map, ip, rl);
         }
         ++rl->count;
-        if(rl->count > rate_limiter->ip_rate_limit_max) {
-            LOG_INFO("[KO] rl->count=%d > %d=rate_limiter->ip_rate_limit_max\n", rl->count, rate_limiter->ip_rate_limit_max);
+        if(rl->count > rate_limiter->irl_max) {
+            LOG_INFO("[KO] rl->count=%d > %d=rate_limiter->irl_max\n", rl->count, rate_limiter->irl_max);
             ret = 0;
         } else {
-            LOG_DEBUG("[OK] rl->count=%d <= %d=rate_limiter->ip_rate_limit_max\n", rl->count, rate_limiter->ip_rate_limit_max);
+            LOG_DEBUG("[OK] rl->count=%d <= %d=rate_limiter->irl_max\n", rl->count, rate_limiter->irl_max);
         }
         LOG_DEBUG("UNLOCK is_under_rate_limit thread = 0x%zx\n", (size_t)pthread_self());
         pthread_mutex_unlock(&rate_limiter->lock);     //Don't forget locking
