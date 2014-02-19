@@ -89,7 +89,7 @@ static int override_config_from_file(tesr_config_t *thiz) {
     int config_loaded = load_config_file(&cfg, "./tesr.conf");
     if(!config_loaded) {
         //Try sytem second
-        config_loaded = load_config_file(&cfg, "/etc/tesr.conf");
+        config_loaded = load_config_file(&cfg, "/etc/tesr/tesr.conf");
     }
     if(config_loaded) {
         int_from_config(&cfg, &thiz->recv_port, "recv_port");

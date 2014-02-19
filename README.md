@@ -12,7 +12,7 @@ Tools for checking udp throughput on networks
 * ratelimit source ips over time
 
 ## Conf
-[checkout the example tesr.conf](etc/tesr.conf)
+[checkout the example tesr.conf](etc/tesr/tesr.conf)
 
 ## Build
 ```bash
