@@ -77,6 +77,14 @@ int is_under_rate_limit(rate_limiter_t *rate_limiter, const char *ip) {
             init_rate_limit(rl, ip);
             HASH_ADD_STR( rate_limiter->rate_limit_map, ip, rl);
         }
+        time_t now;
+        time(&now);
+        double time_elapsed = difftime(now, rl->last_check);
+        if(time_elapsed > rate_limiter->irl_inactivity_timeout) {
+            // if the ratelimit has expired reset
+            rl->count = 0;
+        }
+        rl->last_check = now;
         ++rl->count;
         if(rl->count > rate_limiter->irl_max) {
             LOG_INFO("[KO] rl->count=%d > %d=rate_limiter->irl_max\n", rl->count, rate_limiter->irl_max);
